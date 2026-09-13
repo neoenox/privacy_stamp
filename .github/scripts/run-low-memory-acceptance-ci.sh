@@ -3,11 +3,11 @@ set -euo pipefail
 
 # CI-only transport shim for the 2 GiB API 35 AVD.
 # The acceptance assertions and the 12-minute A-C wall clock remain in
-# run-low-memory-acceptance.sh unchanged. This wrapper only waits for Android's
-# post-boot broadcast work to become idle, makes APK installation less stressful
-# on the low-memory guest, disables DDS for flutter drive on the emulator, and
-# captures logcat before the integration test reaches A:start so bootstrap
-# failures remain diagnosable.
+# run-low-memory-acceptance.sh unchanged. This wrapper only gives Android's
+# post-boot broadcast work a bounded best-effort stabilization window, makes APK
+# installation less stressful on the low-memory guest, disables DDS for flutter
+# drive on the emulator, and captures logcat before the integration test reaches
+# A:start so bootstrap failures remain diagnosable.
 # Flutter's integration-test guidance recommends --no-dds for mobile devices
 # and emulators; keeping the driver connected directly to the VM service also
 # avoids the startup boundary that previously stalled before A:start.
@@ -77,16 +77,25 @@ export PATH="$shim_dir:$PATH"
 
 # sys.boot_completed=1 only means Android reached the boot-complete phase. On
 # the 2 GiB Google APIs image, queued PRE_BOOT_COMPLETED/BOOT_COMPLETED receivers
-# can continue for many minutes and cause system-wide ANRs while the acceptance
-# app starts. Wait on ActivityManager's own broadcast-idle barrier instead of a
-# fixed sleep. Keep this infrastructure wait bounded and fail before acceptance
-# if the guest never stabilizes; the app acceptance wall clock remains 12m.
-printf 'Low-memory AVD boot completed; waiting for Android broadcast queues to become idle.\n'
-if ! "$real_timeout" 900s "$real_adb" shell am wait-for-broadcast-idle; then
-  printf 'Android broadcast queues did not become idle within 900 seconds.\n' >&2
+# can continue for many minutes. Give ActivityManager a bounded stabilization
+# opportunity, but do not make *global* broadcast-idle a prerequisite for the
+# app acceptance: stock Google APIs background work can legally remain active
+# longer than this job's useful preflight window. The acceptance itself remains
+# fail-closed and keeps its unchanged 12-minute A-C wall clock.
+printf 'Low-memory AVD boot completed; giving Android broadcast queues a bounded stabilization window.\n'
+if "$real_timeout" 180s "$real_adb" shell am wait-for-broadcast-idle; then
+  printf 'Android broadcast queues are idle; starting acceptance.\n'
+else
+  printf 'Android broadcast queues remained active after 180 seconds; continuing to the fail-closed app acceptance.\n' >&2
+fi
+
+# Confirm the package manager is responsive before spending the app-acceptance
+# clock. This is a narrow readiness check rather than a requirement that every
+# background system receiver in the Google APIs image has gone idle.
+if ! "$real_timeout" 30s "$real_adb" shell cmd package list packages >/dev/null; then
+  printf 'Android package manager did not become responsive; cannot start acceptance reliably.\n' >&2
   exit 1
 fi
-printf 'Android broadcast queues are idle; starting acceptance.\n'
 
 mkdir -p .ci-logs/android
 bootstrap_logcat=.ci-logs/android/bootstrap-logcat.txt
