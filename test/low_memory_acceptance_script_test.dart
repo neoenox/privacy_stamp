@@ -105,7 +105,7 @@ void main() {
       );
       expect(
         ciWrapper,
-        contains(r'"$real_timeout" 900s'),
+        contains(r'"$real_timeout" 180s'),
         reason: 'Post-boot stabilization must remain bounded.',
       );
       expect(
