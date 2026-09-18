@@ -66,6 +66,8 @@ class _StampHomePageState extends State<StampHomePage> {
         _notice('画像を選択できませんでした。もう一度お試しください。');
       case PickImageResult.decodeFailed:
         _notice('この画像を読み込めませんでした。別の画像を選んでください。');
+      case PickImageResult.detectionEmpty:
+        _notice('自動検出で領域が見つかりませんでした。手動でマスクしてください。');
       case PickImageResult.detectionFailed:
         _notice('画像の自動確認に失敗しました。画像は手動で編集できます。');
     }
@@ -82,7 +84,7 @@ class _StampHomePageState extends State<StampHomePage> {
       builder: (context) => AlertDialog(
         title: const Text('書き出す前に確認してください'),
         content: const Text(
-          '自動検出は未実装です。隠し忘れがないか、'
+          '顔・文字・バーコードの自動検出は目安です。隠し忘れがないか、'
           '画像全体を確認してから書き出してください。',
         ),
         actions: [
@@ -126,7 +128,12 @@ class _StampHomePageState extends State<StampHomePage> {
       actions: [
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 12),
-          child: Center(child: Text('書き出し履歴 ${_controller.exportCount}件')),
+          child: Center(
+            child: Text(
+              'v${appBuildVersion} ${appBuildSha} 書き出し ${_controller.exportCount}件',
+              style: const TextStyle(fontSize: 12),
+            ),
+          ),
         ),
       ],
     ),
@@ -138,12 +145,14 @@ class _StampHomePageState extends State<StampHomePage> {
             manualStamps: _controller.manualStamps,
             busy: _controller.isBusy,
             canUndo: _controller.canUndoManualEdit,
+            automaticCount: _controller.automaticCount,
             onAdd: _controller.addManualStamp,
             onAddAt: _controller.addManualStampAt,
             onMove: _controller.moveManualStamp,
             onResize: _controller.resizeManualStamp,
             onRemove: _controller.removeManualStamp,
             onUndo: _controller.undoManualEdit,
+            onClearAutomatic: _controller.clearAutomaticDetections,
             onExport: _export,
             onReset: _controller.reset,
           )
@@ -220,12 +229,14 @@ class _Editor extends StatefulWidget {
     required this.manualStamps,
     required this.busy,
     required this.canUndo,
+    required this.automaticCount,
     required this.onAdd,
     required this.onAddAt,
     required this.onMove,
     required this.onResize,
     required this.onRemove,
     required this.onUndo,
+    required this.onClearAutomatic,
     required this.onExport,
     required this.onReset,
   });
@@ -236,12 +247,14 @@ class _Editor extends StatefulWidget {
   final List<Stamp> manualStamps;
   final bool busy;
   final bool canUndo;
+  final int automaticCount;
   final VoidCallback onAdd;
   final ValueChanged<ui.Offset> onAddAt;
   final void Function(String id, ui.Offset delta) onMove;
   final void Function(String id, ui.Offset delta) onResize;
   final ValueChanged<String> onRemove;
   final VoidCallback onUndo;
+  final VoidCallback onClearAutomatic;
   final VoidCallback onExport;
   final VoidCallback onReset;
 
@@ -316,9 +329,29 @@ class _EditorState extends State<_Editor> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           const Text(
-            '自動検出は未実装です。OCR・顔・バーコードの領域は追加されません。手動でマスクしてください。',
-            semanticsLabel: '自動検出は未実装です。手動でマスクしてください。',
+            '顔・文字・バーコードの候補は自動で追加されます（目安）。漏れがあるため、必ず目視で確認してください。',
+            semanticsLabel:
+                '顔・文字・バーコードの候補は自動で追加されます。必ず目視で確認してください。',
           ),
+          if (widget.automaticCount > 0)
+            Padding(
+              padding: const EdgeInsets.only(top: 8),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      '自動マスク ${widget.automaticCount}件',
+                      style: Theme.of(context).textTheme.titleSmall,
+                    ),
+                  ),
+                  TextButton.icon(
+                    onPressed: widget.busy ? null : widget.onClearAutomatic,
+                    icon: const Icon(Icons.auto_fix_off, size: 18),
+                    label: const Text('自動マスクを消す'),
+                  ),
+                ],
+              ),
+            ),
           const SizedBox(height: 8),
           Wrap(
             spacing: 8,
@@ -385,7 +418,8 @@ class _EditorState extends State<_Editor> {
     ),
   );
 
-  Widget _controlButton(String label, IconData icon, VoidCallback onPressed) =>
+  Widget _controlButton(
+      String label, IconData icon, VoidCallback onPressed) =>
       Semantics(
         button: true,
         label: '選択中のマスクを$label',
@@ -414,7 +448,7 @@ class _EditorState extends State<_Editor> {
   );
 }
 
-class _ImageEditorCanvas extends StatelessWidget {
+class _ImageEditorCanvas extends StatefulWidget {
   const _ImageEditorCanvas({
     super.key,
     required this.bytes,
@@ -433,11 +467,33 @@ class _ImageEditorCanvas extends StatelessWidget {
   final ValueChanged<ui.Offset> onAddAt;
 
   @override
+  State<_ImageEditorCanvas> createState() => _ImageEditorCanvasState();
+}
+
+class _ImageEditorCanvasState extends State<_ImageEditorCanvas> {
+  final TransformationController _transformationController =
+      TransformationController();
+  DateTime? _lastInteractionEnd;
+  static const _tapSuppressWindow = Duration(milliseconds: 200);
+
+  @override
+  void dispose() {
+    _transformationController.dispose();
+    super.dispose();
+  }
+
+  bool get _tapSuppressed {
+    final end = _lastInteractionEnd;
+    if (end == null) return false;
+    return DateTime.now().difference(end) < _tapSuppressWindow;
+  }
+
+  @override
   Widget build(BuildContext context) => LayoutBuilder(
     builder: (context, constraints) {
       final canvasSize = ui.Size(constraints.maxWidth, constraints.maxHeight);
       final layout = ImageDisplayLayout.contain(
-        imageSize: imageSize,
+        imageSize: widget.imageSize,
         canvasSize: canvasSize,
       );
       return Semantics(
@@ -445,13 +501,16 @@ class _ImageEditorCanvas extends StatelessWidget {
         container: true,
         child: InteractiveViewer(
           key: const ValueKey('image-editor-interactive-viewer'),
+          transformationController: _transformationController,
           minScale: 1,
           maxScale: 4,
           panEnabled: true,
           scaleEnabled: true,
+          onInteractionEnd: (_) => _lastInteractionEnd = DateTime.now(),
           child: GestureDetector(
             behavior: HitTestBehavior.opaque,
             onTapUp: (details) {
+              if (_tapSuppressed) return;
               if (!layout.imageRect.contains(details.localPosition)) return;
               final normalized = layout.normalizedRectFromDisplay(
                 ui.Rect.fromCenter(
@@ -460,7 +519,7 @@ class _ImageEditorCanvas extends StatelessWidget {
                   height: 0,
                 ),
               );
-              onAddAt(ui.Offset(normalized.left, normalized.top));
+              widget.onAddAt(ui.Offset(normalized.left, normalized.top));
             },
             child: ColoredBox(
               color: Colors.black12,
@@ -470,14 +529,14 @@ class _ImageEditorCanvas extends StatelessWidget {
                   Builder(
                     builder: (context) {
                       final target = editorDecodeTarget(
-                        imageSize: imageSize,
+                        imageSize: widget.imageSize,
                         canvasSize: canvasSize,
                         devicePixelRatio: MediaQuery.devicePixelRatioOf(
                           context,
                         ),
                       );
                       return Image.memory(
-                        bytes,
+                        widget.bytes,
                         fit: BoxFit.contain,
                         cacheWidth: target.width,
                         cacheHeight: target.height,
@@ -486,12 +545,12 @@ class _ImageEditorCanvas extends StatelessWidget {
                       );
                     },
                   ),
-                  for (final stamp in stamps)
+                  for (final stamp in widget.stamps)
                     _StampOverlay(
                       stamp: stamp,
                       rect: layout.displayRectFromNormalized(stamp.rect),
-                      selected: stamp.id == selectedStampId,
-                      onSelect: () => onSelect(stamp),
+                      selected: stamp.id == widget.selectedStampId,
+                      onSelect: () => widget.onSelect(stamp),
                     ),
                 ],
               ),

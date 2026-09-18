@@ -27,7 +27,10 @@ void main() {
     await controller.pickImage();
     await tester.pump();
 
-    expect(find.textContaining('自動検出は未実装'), findsOneWidget);
+    expect(
+      find.textContaining('顔・文字・バーコードの候補は自動で追加されます'),
+      findsOneWidget,
+    );
     expect(find.text('文字をすべて隠す'), findsNothing);
     expect(
       find.bySemanticsLabel('画像編集領域。画像上をタップすると手動マスクを追加します。'),
@@ -78,7 +81,8 @@ void main() {
     tester,
   ) async {
     const reviewMessage =
-        '自動検出は未実装です。隠し忘れがないか、'
+        '顔・文字・バーコードの自動検出は目安です。'
+        '隠し忘れがないか、'
         '画像全体を確認してから書き出してください。';
     final saver = _FakeSaver();
     final controller = StampController(
