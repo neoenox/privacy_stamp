@@ -60,10 +60,53 @@ class Stamp {
   NormalizedRect rect;
   String kind;
   final bool isAutomatic;
+
+  Stamp copyWith({NormalizedRect? rect, String? kind}) => Stamp(
+    id: id,
+    rect: rect ?? this.rect,
+    kind: kind ?? this.kind,
+    isAutomatic: isAutomatic,
+  );
+}
+
+enum DetectionOutcome { empty, success, exception }
+
+class DetectionResult {
+  DetectionResult({
+    this.regions = const [],
+    this.outcome = DetectionOutcome.empty,
+    this.error,
+    this.width,
+    this.height,
+    this.faceCount,
+  });
+
+  factory DetectionResult.exception({
+    String? error,
+    dynamic stackTrace,
+  }) =>
+      DetectionResult(
+        outcome: DetectionOutcome.exception,
+        error: error,
+      );
+
+  factory DetectionResult.empty() =>
+      DetectionResult(outcome: DetectionOutcome.empty);
+
+  final List<DetectionRegion> regions;
+  final DetectionOutcome outcome;
+  final String? error;
+  final int? width;
+  final int? height;
+  final int? faceCount;
+
+  bool get isEmpty => regions.isEmpty;
+  bool get isSuccess => outcome == DetectionOutcome.success;
+  bool get isException => outcome == DetectionOutcome.exception;
 }
 
 abstract interface class FaceRegionDetector {
-  Future<List<DetectionRegion>> detect(Uint8ListImageInput input);
+  Future<DetectionResult> detect(Uint8ListImageInput input);
 }
 
 abstract interface class TextRegionDetector {
