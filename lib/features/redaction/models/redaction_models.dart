@@ -60,13 +60,20 @@ class Stamp {
   NormalizedRect rect;
   String kind;
   final bool isAutomatic;
+
+  Stamp copyWith({NormalizedRect? rect, String? kind}) => Stamp(
+    id: id,
+    rect: rect ?? this.rect,
+    kind: kind ?? this.kind,
+    isAutomatic: isAutomatic,
+  );
 }
 
 enum DetectionOutcome { empty, success, exception }
 
 class DetectionResult {
   DetectionResult({
-    required this.regions,
+    this.regions = const [],
     this.outcome = DetectionOutcome.empty,
     this.error,
     this.width,
@@ -79,13 +86,12 @@ class DetectionResult {
     dynamic stackTrace,
   }) =>
       DetectionResult(
-        regions: const [],
         outcome: DetectionOutcome.exception,
         error: error,
       );
 
   factory DetectionResult.empty() =>
-      const DetectionResult(outcome: DetectionOutcome.empty);
+      DetectionResult(outcome: DetectionOutcome.empty);
 
   final List<DetectionRegion> regions;
   final DetectionOutcome outcome;

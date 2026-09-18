@@ -29,23 +29,28 @@ class DetectionService {
     final textHits = _rules.detect(textRegions, hideAllText: hideAllText);
 
     final faceResult = await _faceDetector.detect(input);
-    final codeResult = await _codeDetector.detect(input);
+    final codeRegions = await _codeDetector.detect(input);
 
     lastSummary = DetectionSummary(
       faces: faceResult,
-      codes: codeResult,
+      codes: DetectionResult(
+        regions: codeRegions,
+        outcome: codeRegions.isEmpty
+            ? DetectionOutcome.empty
+            : DetectionOutcome.success,
+      ),
       textHits: textHits,
       textRegions: textRegions,
     );
 
-    return [...faceResult.regions, ...codeResult.regions, ...textHits];
+    return [...faceResult.regions, ...codeRegions, ...textHits];
   }
 
   Future<DetectionSummary> inspectWithDiagnostics(
     Uint8ListImageInput input, {
     bool hideAllText = false,
   }) async {
-    final regions = await inspect(input: input, hideAllText: hideAllText);
+    final regions = await inspect(input, hideAllText: hideAllText);
     return lastSummary ??
         DetectionSummary(
           faces: DetectionResult.empty(),

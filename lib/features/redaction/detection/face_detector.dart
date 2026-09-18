@@ -1,3 +1,4 @@
+import 'dart:typed_data';
 import 'dart:ui';
 
 import 'package:flutter/foundation.dart';
@@ -5,6 +6,20 @@ import 'package:google_mlkit_face_detection/google_mlkit_face_detection.dart';
 import 'package:image/image.dart' as img;
 
 import '../models/redaction_models.dart';
+
+class _PreparedImage {
+  final Uint8List bytes;
+  final int width;
+  final int height;
+  final int bytesPerRow;
+
+  _PreparedImage({
+    required this.bytes,
+    required this.width,
+    required this.height,
+    required this.bytesPerRow,
+  });
+}
 
 /// No platform detector available (e.g. Web). Never throws, never detects.
 class NoopFaceDetector implements FaceRegionDetector {
@@ -26,7 +41,7 @@ class NoopFaceDetector implements FaceRegionDetector {
 ///   YUV conversion (see also: `_prepareImage` below).
 /// - Uses ACCURATE mode with minFaceSize 0.05 for high-recall detection.
 ///   A lightweight FAST first pass at 1024px is used; if it returns zero
-///   faces, a second ACCURATE pass runs at 1600–2048px to catch small faces
+///   faces, a second ACCURATE pass runs at 1600-2048px to catch small faces
 ///   that the first pass may have missed.
 /// - [DetectionOutcome] is surfaced so callers can distinguish "ML Kit ran
 ///   but found no faces" from "ML Kit failed entirely". See
@@ -50,12 +65,12 @@ class MlKitFaceDetector implements FaceRegionDetector {
 
   /// Set by the last [detect] call. Use this to distinguish a real
   /// zero-face result from a detector failure.
-  DetectionResult detectionResult = const DetectionResult.empty();
+  DetectionResult detectionResult = DetectionResult.empty();
 
   @override
   Future<DetectionResult> detect(Uint8ListImageInput input) async {
     if (kIsWeb) {
-      detectionResult = const DetectionResult.empty();
+      detectionResult = DetectionResult.empty();
       return detectionResult;
     }
     try {
@@ -84,7 +99,7 @@ class MlKitFaceDetector implements FaceRegionDetector {
       detectionResult = secondPass;
       return detectionResult;
     } catch (_) {
-      detectionResult = const DetectionResult.exception();
+      detectionResult = DetectionResult.exception();
       return detectionResult;
     }
   }
@@ -94,7 +109,7 @@ class MlKitFaceDetector implements FaceRegionDetector {
     required int maxDimension,
     FaceDetectorOptions? options,
   }) async {
-    if (kIsWeb) return const DetectionResult.empty();
+    if (kIsWeb) return DetectionResult.empty();
 
     FaceDetector? detector;
     try {
@@ -102,7 +117,7 @@ class MlKitFaceDetector implements FaceRegionDetector {
         _prepareImageWorker,
         _PrepareImagePayload(input, maxDimension),
       );
-      if (prepared == null) return const DetectionResult.empty();
+      if (prepared == null) return DetectionResult.empty();
 
       detector = FaceDetector(
         options: options ??
@@ -173,14 +188,14 @@ class MlKitFaceDetector implements FaceRegionDetector {
 /// Even dimensions are required (odd edges are cropped by one pixel).
 /// Returns `null` when the source cannot be decoded. Runs in a background
 /// isolate via [compute]; keep this a top-level function.
-Map<String, Object>? _prepareImage(
+_PreparedImage? _prepareImage(
   Uint8ListImageInput input, {
   required int maxDimension,
 }) {
   final source = input.bytes;
   try {
     if (source.isEmpty) return null;
-    final decoded = img.decodeImage(source);
+    final decoded = img.decodeImage(Uint8List.fromList(source));
     if (decoded == null) return null;
     final oriented = img.bakeOrientation(decoded);
     if (oriented.width <= 0 || oriented.height <= 0) return null;
@@ -206,13 +221,12 @@ Map<String, Object>? _prepareImage(
     }
 
     final bytes = sized.getBytes(order: img.ChannelOrder.bgra);
-    final bytesPerRow = width * 4;
-    return <String, Object>{
-      'bytes': bytes,
-      'width': width,
-      'height': height,
-      'bytesPerRow': bytesPerRow,
-    };
+    return _PreparedImage(
+      bytes: bytes,
+      width: width,
+      height: height,
+      bytesPerRow: width * 4,
+    );
   } catch (_) {
     return null;
   }
@@ -225,5 +239,5 @@ class _PrepareImagePayload {
   _PrepareImagePayload(this.input, this.maxDimension);
 }
 
-Map<String, Object>? _prepareImageWorker(_PrepareImagePayload payload) =>
+_PreparedImage? _prepareImageWorker(_PrepareImagePayload payload) =>
     _prepareImage(payload.input, maxDimension: payload.maxDimension);

@@ -1,3 +1,4 @@
+import 'dart:typed_data';
 import 'dart:ui';
 
 import 'package:flutter/foundation.dart';
@@ -6,6 +7,20 @@ import 'package:image/image.dart' as img;
 
 import '../models/redaction_models.dart' as app;
 import '../models/redaction_models.dart' show NormalizedRect;
+
+class _PreparedImage {
+  final Uint8List bytes;
+  final int width;
+  final int height;
+  final int bytesPerRow;
+
+  _PreparedImage({
+    required this.bytes,
+    required this.width,
+    required this.height,
+    required this.bytesPerRow,
+  });
+}
 
 /// No platform OCR available (e.g. Web). Never throws, never detects.
 class NoopTextDetector implements app.TextRegionDetector {
@@ -41,10 +56,10 @@ class MlKitTextDetector implements app.TextRegionDetector {
     app.Uint8ListImageInput input,
   ) async {
     if (kIsWeb) return const [];
-  try {
+    try {
       final prepared = await compute(
         _prepareNv21ForTextWorker,
-        _PrepareTextPayload(input, maxDimension),
+        _PrepareTextPayload(input, maxDetectionDimension),
       );
       if (prepared == null) return const [];
 
@@ -88,8 +103,6 @@ class MlKitTextDetector implements app.TextRegionDetector {
         await recognizer.close();
       }
     } catch (_) {
-      // MissingPluginException (desktop/test), model download failure,
-      // corrupt input: all degrade to "no automatic suggestions".
       return const [];
     }
   }
@@ -99,14 +112,14 @@ class MlKitTextDetector implements app.TextRegionDetector {
 ///
 /// NV21 requires even dimensions; odd edges are cropped by one pixel.
 /// Returns `null` when the source cannot be decoded.
-Map<String, Object>? _prepareNv21ForText(
+_PreparedImage? _prepareNv21ForText(
   app.Uint8ListImageInput input, {
   required int maxDimension,
 }) {
   final source = input.bytes;
   try {
     if (source.isEmpty) return null;
-    final decoded = img.decodeImage(source);
+    final decoded = img.decodeImage(Uint8List.fromList(source));
     if (decoded == null) return null;
     final oriented = img.bakeOrientation(decoded);
     if (oriented.width <= 0 || oriented.height <= 0) return null;
@@ -152,12 +165,12 @@ Map<String, Object>? _prepareNv21ForText(
         }
       }
     }
-    return <String, Object>{
-      'bytes': nv21,
-      'width': width,
-      'height': height,
-      'bytesPerRow': width,
-    };
+    return _PreparedImage(
+      bytes: nv21,
+      width: width,
+      height: height,
+      bytesPerRow: width,
+    );
   } catch (_) {
     return null;
   }
@@ -170,5 +183,5 @@ class _PrepareTextPayload {
   _PrepareTextPayload(this.input, this.maxDimension);
 }
 
-Map<String, Object>? _prepareNv21ForTextWorker(_PrepareTextPayload payload) =>
+_PreparedImage? _prepareNv21ForTextWorker(_PrepareTextPayload payload) =>
     _prepareNv21ForText(payload.input, maxDimension: payload.maxDimension);

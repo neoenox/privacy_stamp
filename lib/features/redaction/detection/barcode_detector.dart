@@ -1,3 +1,4 @@
+import 'dart:typed_data';
 import 'dart:ui';
 
 import 'package:flutter/foundation.dart';
@@ -5,6 +6,20 @@ import 'package:google_mlkit_barcode_scanning/google_mlkit_barcode_scanning.dart
 import 'package:image/image.dart' as img;
 
 import '../models/redaction_models.dart';
+
+class _PreparedImage {
+  final Uint8List bytes;
+  final int width;
+  final int height;
+  final int bytesPerRow;
+
+  _PreparedImage({
+    required this.bytes,
+    required this.width,
+    required this.height,
+    required this.bytesPerRow,
+  });
+}
 
 /// No platform barcode scanner available (e.g. Web). Never throws.
 class NoopCodeDetector implements CodeRegionDetector {
@@ -84,8 +99,6 @@ class MlKitBarcodeDetector implements CodeRegionDetector {
         await scanner.close();
       }
     } catch (_) {
-      // MissingPluginException (desktop/test), model download failure,
-      // corrupt input: all degrade to "no automatic suggestions".
       return const [];
     }
   }
@@ -95,14 +108,14 @@ class MlKitBarcodeDetector implements CodeRegionDetector {
 ///
 /// NV21 requires even dimensions; odd edges are cropped by one pixel.
 /// Returns `null` when the source cannot be decoded.
-Map<String, Object>? _prepareNv21ForBarcode(
+_PreparedImage? _prepareNv21ForBarcode(
   Uint8ListImageInput input, {
   required int maxDimension,
 }) {
   final source = input.bytes;
   try {
     if (source.isEmpty) return null;
-    final decoded = img.decodeImage(source);
+    final decoded = img.decodeImage(Uint8List.fromList(source));
     if (decoded == null) return null;
     final oriented = img.bakeOrientation(decoded);
     if (oriented.width <= 0 || oriented.height <= 0) return null;
@@ -148,12 +161,12 @@ Map<String, Object>? _prepareNv21ForBarcode(
         }
       }
     }
-    return <String, Object>{
-      'bytes': nv21,
-      'width': width,
-      'height': height,
-      'bytesPerRow': width,
-    };
+    return _PreparedImage(
+      bytes: nv21,
+      width: width,
+      height: height,
+      bytesPerRow: width,
+    );
   } catch (_) {
     return null;
   }
@@ -166,6 +179,5 @@ class _PrepareBarcodePayload {
   _PrepareBarcodePayload(this.input, this.maxDimension);
 }
 
-Map<String, Object>? _prepareNv21ForBarcodeWorker(_PrepareBarcodePayload payload) =>
+_PreparedImage? _prepareNv21ForBarcodeWorker(_PrepareBarcodePayload payload) =>
     _prepareNv21ForBarcode(payload.input, maxDimension: payload.maxDimension);
-
