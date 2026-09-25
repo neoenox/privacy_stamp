@@ -234,9 +234,14 @@ sample_memory() {
     now=$(timestamp)
     pid=$(adb shell pidof "$package" 2>/dev/null | tr -d '\r' | awk '{print $1}')
     if [[ "$pid" =~ ^[0-9]+$ ]]; then
-      pss=$(adb shell dumpsys meminfo --local "$package" 2>/dev/null \
-        | awk '/TOTAL PSS:/ {print $3; exit} /^ *TOTAL +[0-9]+/ {print $2; exit}' \
-        | tr -d '\r')
+      # Avoid dumpsys meminfo here: on a constrained API 35 Google APIs
+      # guest it serializes through system_server and can itself cause long
+      # monitor contention/ANRs. The integration APK is debuggable, so run-as
+      # can read the target process' smaps_rollup directly without invoking an
+      # application dump callback or system_server.
+      pss=$("$timeout_bin" --signal=TERM --kill-after=2s 5s \
+        adb shell run-as "$package" cat "/proc/$pid/smaps_rollup" 2>/dev/null \
+        | awk '/^Pss:/ {print $2; exit}' | tr -d '\r')
       if [[ ! "$pss" =~ ^[0-9]+$ ]]; then
         pss=0
       fi
