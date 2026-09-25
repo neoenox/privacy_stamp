@@ -198,13 +198,17 @@ void main() {
 
     expect(
       script,
-      contains(r'adb shell dumpsys meminfo --local "$package"'),
-      reason: 'PSS collection must stay local to system_server.',
+      contains(r'adb shell run-as "$package" cat "/proc/$pid/smaps_rollup"'),
+      reason:
+          'PSS collection must read the debuggable app process directly '
+          'instead of serializing through system_server.',
     );
     expect(
       script,
-      isNot(contains(r'adb shell dumpsys meminfo "$package"')),
-      reason: 'Regular dumpsys meminfo can force explicit GC in the app.',
+      isNot(contains('dumpsys meminfo')),
+      reason:
+          'Periodic dumpsys meminfo can stall system_server on the low-memory '
+          'Google APIs guest.',
     );
   });
 }
