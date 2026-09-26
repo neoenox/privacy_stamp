@@ -34,7 +34,7 @@ void main() {
       expect(controller.isBusy, isFalse);
 
       final succeeded = await controller.pickImage();
-      expect(succeeded, PickImageResult.selected);
+      expect(succeeded, PickImageResult.detectionEmpty);
       expect(controller.pickFailure, isNull);
       expect(controller.hasImage, isTrue);
     },
@@ -67,7 +67,7 @@ void main() {
     final result = await controller.pickImage();
 
     expect(result, PickImageResult.detectionFailed);
-    expect(controller.pickFailure, PickImageFailure.detection);
+    expect(controller.pickFailure, PickImageFailure.detectionFailed);
     expect(controller.hasImage, isTrue);
     expect(controller.detections, isEmpty);
     expect(controller.isBusy, isFalse);
