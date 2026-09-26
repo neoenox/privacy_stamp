@@ -25,25 +25,42 @@ class DetectionService {
     Uint8ListImageInput input, {
     bool hideAllText = false,
   }) async {
-    final textRegions = await _textDetector.detect(input);
+    List<RecognizedTextRegion> textRegions;
+    try {
+      textRegions = await _textDetector.detect(input);
+    } catch (_) {
+      textRegions = const [];
+    }
     final textHits = _rules.detect(textRegions, hideAllText: hideAllText);
 
-    final faceResult = await _faceDetector.detect(input);
-    final codeRegions = await _codeDetector.detect(input);
+    DetectionResult faceResult;
+    try {
+      faceResult = await _faceDetector.detect(input);
+    } catch (_) {
+      faceResult = DetectionResult.exception(error: 'face detection failed');
+    }
 
-    lastSummary = DetectionSummary(
-      faces: faceResult,
-      codes: DetectionResult(
+    DetectionResult codeResult;
+    try {
+      final codeRegions = await _codeDetector.detect(input);
+      codeResult = DetectionResult(
         regions: codeRegions,
         outcome: codeRegions.isEmpty
             ? DetectionOutcome.empty
             : DetectionOutcome.success,
-      ),
+      );
+    } catch (_) {
+      codeResult = DetectionResult.exception(error: 'code detection failed');
+    }
+
+    lastSummary = DetectionSummary(
+      faces: faceResult,
+      codes: codeResult,
       textHits: textHits,
       textRegions: textRegions,
     );
 
-    return [...faceResult.regions, ...codeRegions, ...textHits];
+    return [...faceResult.regions, ...codeResult.regions, ...textHits];
   }
 
   Future<DetectionSummary> inspectWithDiagnostics(
