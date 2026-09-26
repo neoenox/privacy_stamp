@@ -64,6 +64,10 @@ android {
 
     buildTypes {
         release {
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro",
+            )
             signingConfig = when {
                 hasReleaseKey -> signingConfigs.getByName("release")
                 allowDebugReleaseSigning -> signingConfigs.getByName("debug")
@@ -81,4 +85,11 @@ kotlin {
 
 flutter {
     source = "../.."
+}
+
+
+dependencies {
+    // The Flutter plugin exposes all script enums, but this app selects
+    // TextRecognitionScript.japanese. Bundle the matching on-device model.
+    implementation("com.google.mlkit:text-recognition-japanese:16.0.1")
 }
