@@ -7,12 +7,15 @@ on:
       - 'tools/local_acceptance/**'
       - 'test/image_metadata_probe_test.dart'
       - 'test/android_runtime_evidence_test.dart'
+      - 'test/low_memory_acceptance_script_test.dart'
       - 'integration_test/**'
       - 'test/fixtures/synthetic-high-res-avd.jpg'
       - 'lib/main.dart'
       - 'lib/test_harness.dart'
       - 'docs/high-resolution-acceptance.md'
       - '.github/scripts/run-low-memory-acceptance.sh'
+      - '.github/scripts/run-low-memory-acceptance-ci.sh'
+      - '.github/workflows/flutter-quality.yml'
       - '.github/workflows/local-acceptance-scripts.yml'
   push:
     branches:
@@ -22,12 +25,15 @@ on:
       - 'tools/local_acceptance/**'
       - 'test/image_metadata_probe_test.dart'
       - 'test/android_runtime_evidence_test.dart'
+      - 'test/low_memory_acceptance_script_test.dart'
       - 'integration_test/**'
       - 'test/fixtures/synthetic-high-res-avd.jpg'
       - 'lib/main.dart'
       - 'lib/test_harness.dart'
       - 'docs/high-resolution-acceptance.md'
       - '.github/scripts/run-low-memory-acceptance.sh'
+      - '.github/scripts/run-low-memory-acceptance-ci.sh'
+      - '.github/workflows/flutter-quality.yml'
       - '.github/workflows/local-acceptance-scripts.yml'
 
 permissions:
@@ -51,7 +57,7 @@ jobs:
           dart format --output=none --set-exit-if-changed tool/acceptance test/image_metadata_probe_test.dart test/android_runtime_evidence_test.dart
           flutter analyze
       - name: Test acceptance probes
-        run: flutter test test/image_metadata_probe_test.dart test/android_runtime_evidence_test.dart
+        run: flutter test test/image_metadata_probe_test.dart test/android_runtime_evidence_test.dart test/low_memory_acceptance_script_test.dart
 
   validate-powershell:
     runs-on: windows-latest
@@ -93,11 +99,16 @@ jobs:
     # Use GitHub's standard Intel macOS runner so the Android emulator can use
     # host virtualization without weakening the x86_64 / 1-2 GiB acceptance.
     runs-on: macos-15-intel
-    timeout-minutes: 45
+    # The 2 GiB Google APIs image can spend close to 15 minutes draining first-
+    # boot broadcasts after sys.boot_completed=1. This job timeout covers that
+    # bounded infrastructure stabilization plus the unchanged 12-minute A-C
+    # acceptance wall clock; it does not extend the app acceptance itself.
+    timeout-minutes: 65
     steps:
       - uses: actions/checkout@v4
         with:
           persist-credentials: false
+          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
       - name: Prepare macOS acceptance tools
         shell: bash
         run: |
@@ -116,8 +127,18 @@ jobs:
           cache: true
       - name: Get dependencies
         run: flutter pub get
-      - name: Build debug APK
-        run: flutter build apk --debug
+      - name: Build production and integration-test debug APKs
+        shell: bash
+        run: |
+          set -euxo pipefail
+          apk_dir=build/app/outputs/flutter-apk
+          flutter build apk --debug
+          cp "$apk_dir/app-debug.apk" "$apk_dir/app-debug-main.apk"
+          flutter build apk --debug --target=integration_test/synthetic_low_memory_acceptance_test.dart
+          cp "$apk_dir/app-debug.apk" "$apk_dir/app-debug-integration.apk"
+          cp "$apk_dir/app-debug-main.apk" "$apk_dir/app-debug.apk"
+          test -s "$apk_dir/app-debug-main.apk"
+          test -s "$apk_dir/app-debug-integration.apk"
       - name: Prepare Android diagnostics
         shell: bash
         run: |
@@ -134,16 +155,22 @@ jobs:
           target: google_apis
           arch: x86_64
           profile: pixel_2
-          # Acceptance requires an actual 1-2 GiB guest. Both AVD config and
-          # emulator CLI are pinned; the script also rejects MemTotal outside
-          # that window so a device-profile override cannot silently weaken it.
+          # Issue #17 permits a 1-2 GiB guest. The 1536MB run entered severe
+          # system-wide pressure before A:start and lmkd killed unrelated system
+          # processes, so use the permitted 2 GiB upper bound while keeping the
+          # same API 35 Google APIs image, 48MP fixture, and all app assertions.
           disk-size: 2048M
-          ram-size: 1536M
+          ram-size: 2048
           heap-size: 256M
           cores: 2
           force-avd-creation: true
-          emulator-options: -no-window -no-audio -no-boot-anim -gpu swiftshader_indirect -memory 1536
-          script: bash .github/scripts/run-low-memory-acceptance.sh
+          # Run 33314277128 reached an online ADB device but API 35 had not set
+          # sys.boot_completed after the action's 600-second cold-boot limit.
+          # This extends infrastructure boot wait only; the acceptance script's
+          # own 12-minute wall-clock and all Issue #17 assertions stay unchanged.
+          emulator-boot-timeout: 900
+          emulator-options: -no-window -no-audio -no-boot-anim -gpu swiftshader_indirect -memory 2048 -lowram
+          script: bash .github/scripts/run-low-memory-acceptance-ci.sh
 
       - name: Collect Android diagnostics
         if: always()

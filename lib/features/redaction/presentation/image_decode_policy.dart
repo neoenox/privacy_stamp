@@ -20,7 +20,9 @@ DecodeTarget editorDecodeTarget({
   required Size canvasSize,
   required double devicePixelRatio,
   double overscan = 1.5,
-  int maxDimension = 4096,
+  // Keep the editor texture bounded on low-memory devices. Export still uses
+  // the original bytes; this limit applies only to the interactive preview.
+  int maxDimension = 1024,
 }) {
   if (imageSize.width <= 0 || imageSize.height <= 0) {
     throw ArgumentError('Image dimensions must be positive');

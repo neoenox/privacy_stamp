@@ -16,10 +16,10 @@ void main() {
         devicePixelRatio: 3,
       );
 
-      expect(target.width, 2880);
-      expect(target.height, 2160);
+      expect(target.width, 1024);
+      expect(target.height, 768);
       expect(target.width * target.height, lessThan(8000 * 6000));
-      expect(target.width, lessThanOrEqualTo(4096));
+      expect(target.width, lessThanOrEqualTo(1024));
     });
 
     test('does not upscale small images', () {

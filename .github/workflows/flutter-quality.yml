@@ -10,8 +10,55 @@ permissions:
   contents: read
 
 jobs:
+  android_release_smoke:
+    name: Android release smoke
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: gradle
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Pub get
+        run: flutter pub get
+
+      - name: Constrain hosted-runner Gradle memory
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          path = Path('android/gradle.properties')
+          text = path.read_text()
+          original = 'org.gradle.jvmargs=-Xmx8G -XX:MaxMetaspaceSize=4G -XX:ReservedCodeCacheSize=512m -XX:+HeapDumpOnOutOfMemoryError'
+          ci_value = 'org.gradle.jvmargs=-Xmx3G -XX:MaxMetaspaceSize=1G -XX:ReservedCodeCacheSize=256m -XX:+HeapDumpOnOutOfMemoryError'
+          if original not in text:
+              raise SystemExit('Expected Gradle JVM defaults were not found; refusing to silently change CI memory semantics')
+          path.write_text(text.replace(original, ci_value, 1) + '\norg.gradle.workers.max=1\norg.gradle.parallel=false\n')
+          PY
+
+      - name: Build release smoke APK
+        shell: bash
+        run: |
+          set -o pipefail
+          env PRIVACY_STAMP_ALLOW_DEBUG_RELEASE_SIGNING=1 flutter build apk --release
+
   quality:
     name: Flutter quality gates
+    needs: android_release_smoke
+    if: ${{ always() }}
     runs-on: ubuntu-latest
     timeout-minutes: 30
 
@@ -32,89 +79,103 @@ jobs:
           channel: stable
           cache: true
 
-      - name: Run quality gates
+      - name: Prepare quality logs
+        run: mkdir -p .ci-logs
+
+      - name: Tool versions
+        id: tool_versions
+        continue-on-error: true
         shell: bash
         run: |
-          set -uo pipefail
-          mkdir -p .ci-logs
-          : > .ci-logs/gates.tsv
-          overall_status=0
+          set -o pipefail
+          bash -c 'flutter --version && dart --version && java -version' 2>&1 | tee .ci-logs/tool_versions.log
 
-          run_gate() {
-            local name="$1"
-            shift
-            local log=".ci-logs/${name}.log"
-            local command_text="$*"
-            local gate_status
+      - name: Pub get
+        id: pub_get
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -o pipefail
+          flutter pub get 2>&1 | tee .ci-logs/pub_get.log
 
-            echo "::group::${name}"
-            echo "Running: ${command_text}"
+      - name: Format
+        id: format
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -o pipefail
+          dart format --output=none --set-exit-if-changed . 2>&1 | tee .ci-logs/format.log
 
-            # GitHub invokes bash with `-e`. Disable errexit only around the
-            # command pipeline so a failed gate can be recorded and the
-            # remaining gates can still run. The final overall status remains
-            # non-zero when any gate failed.
-            set +e
-            "$@" 2>&1 | tee "${log}"
-            gate_status=${PIPESTATUS[0]}
-            set -e
+      - name: Analyze
+        id: analyze
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -o pipefail
+          flutter analyze --fatal-infos 2>&1 | tee .ci-logs/analyze.log
 
-            echo "Exit code: ${gate_status}"
-            echo "::endgroup::"
-            printf '%s\t%s\t%s\n' "${name}" "${gate_status}" "${command_text}" >> .ci-logs/gates.tsv
+      - name: Test
+        id: test
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -o pipefail
+          flutter test --reporter json 2>&1 | tee .ci-logs/test.log
 
-            if [ "${gate_status}" -ne 0 ]; then
-              echo "::error file=${log}::Command failed (exit ${gate_status}): ${command_text}"
-              overall_status=1
-            fi
-          }
+      - name: Web build
+        id: web_build
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -o pipefail
+          flutter build web --release 2>&1 | tee .ci-logs/web_build.log
 
-          run_gate tool_versions bash -c 'flutter --version && dart --version && java -version'
-          run_gate pub_get flutter pub get
-          run_gate format dart format --output=none --set-exit-if-changed .
-          run_gate analyze flutter analyze --fatal-infos
-          run_gate test flutter test --reporter json
-          run_gate web_build flutter build web --release
-          run_gate android_debug_build flutter build apk --debug
-          run_gate android_release_signing_guard bash -c 'set +e; output=$(cd android && ./gradlew assembleRelease --dry-run 2>&1); status=$?; set -e; if [ "$status" -eq 0 ]; then echo "release task unexpectedly succeeded without a signing key"; exit 1; fi; printf "%s\n" "$output" | grep -q "Release signing key is missing"'
-          run_gate android_release_smoke env PRIVACY_STAMP_ALLOW_DEBUG_RELEASE_SIGNING=1 flutter build apk --release
+      - name: Android debug build
+        id: android_debug_build
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -o pipefail
+          flutter build apk --debug 2>&1 | tee .ci-logs/android_debug_build.log
 
-          passed=$(awk -F '\t' '$2 == 0 { count++ } END { print count + 0 }' .ci-logs/gates.tsv)
-          failed=$(awk -F '\t' '$2 != 0 { count++ } END { print count + 0 }' .ci-logs/gates.tsv)
+      - name: Android release signing guard
+        id: android_release_signing_guard
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -o pipefail
+          bash -c 'set +e; output=$(cd android && ./gradlew assembleRelease --dry-run 2>&1); status=$?; set -e; if [ "$status" -eq 0 ]; then echo "release task unexpectedly succeeded without a signing key"; exit 1; fi; printf "%s\n" "$output" | grep -q "Release signing key is missing"' \
+            2>&1 | tee .ci-logs/android_release_signing_guard.log
+
+      - name: Summarize quality gates
+        if: always()
+        shell: bash
+        run: |
+          set -u
+          cat > .ci-logs/gates.tsv <<EOF
+          tool_versions	${{ steps.tool_versions.outcome }}
+          pub_get	${{ steps.pub_get.outcome }}
+          format	${{ steps.format.outcome }}
+          analyze	${{ steps.analyze.outcome }}
+          test	${{ steps.test.outcome }}
+          web_build	${{ steps.web_build.outcome }}
+          android_debug_build	${{ steps.android_debug_build.outcome }}
+          android_release_signing_guard	${{ steps.android_release_signing_guard.outcome }}
+          android_release_smoke	${{ needs.android_release_smoke.result }}
+          EOF
+
           warnings=$(grep -Eic '(^|[[:space:]])(warning|info)([[:space:]:]|$)' .ci-logs/analyze.log 2>/dev/null || true)
-
-          if command -v jq >/dev/null 2>&1; then
-            # `flutter test --reporter json` can emit dependency-resolution text
-            # before the JSON protocol starts. Normalize the log into valid JSONL
-            # first so reporting cannot turn otherwise-passing gates red.
+          test_count="unavailable"
+          skipped_count="unavailable"
+          failed_test_count="unavailable"
+          if command -v jq >/dev/null 2>&1 && [[ -f .ci-logs/test.log ]]; then
             jq -Rrc 'fromjson? // empty' .ci-logs/test.log > .ci-logs/test-events.jsonl || true
-
-            test_count=$(
-              jq -r 'select(.type == "testDone" and (.hidden // false) == false) | .testID' \
-                .ci-logs/test-events.jsonl 2>/dev/null \
-                | sort -u \
-                | wc -l \
-                | tr -d ' '
-            ) || test_count="unavailable"
-            skipped_count=$(
-              jq -r 'select(.type == "testDone" and (.hidden // false) == false and ((.skipped // false) == true or .result == "skipped")) | .testID' \
-                .ci-logs/test-events.jsonl 2>/dev/null \
-                | sort -u \
-                | wc -l \
-                | tr -d ' '
-            ) || skipped_count="unavailable"
-            failed_test_count=$(
-              jq -r 'select(.type == "testDone" and (.hidden // false) == false and .result == "failure") | .testID' \
-                .ci-logs/test-events.jsonl 2>/dev/null \
-                | sort -u \
-                | wc -l \
-                | tr -d ' '
-            ) || failed_test_count="unavailable"
-          else
-            test_count="unavailable (jq not installed)"
-            skipped_count="unavailable (jq not installed)"
-            failed_test_count="unavailable (jq not installed)"
+            test_count=$(jq -r 'select(.type == "testDone" and (.hidden // false) == false) | .testID' .ci-logs/test-events.jsonl 2>/dev/null | sort -u | wc -l | tr -d ' ') || test_count="unavailable"
+            skipped_count=$(jq -r 'select(.type == "testDone" and (.hidden // false) == false and ((.skipped // false) == true or .result == "skipped")) | .testID' .ci-logs/test-events.jsonl 2>/dev/null | sort -u | wc -l | tr -d ' ') || skipped_count="unavailable"
+            failed_test_count=$(jq -r 'select(.type == "testDone" and (.hidden // false) == false and .result == "failure") | .testID' .ci-logs/test-events.jsonl 2>/dev/null | sort -u | wc -l | tr -d ' ') || failed_test_count="unavailable"
           fi
+          passed=$(awk -F '\t' '$2 == "success" { count++ } END { print count + 0 }' .ci-logs/gates.tsv)
+          failed=$(awk -F '\t' '$2 != "success" { count++ } END { print count + 0 }' .ci-logs/gates.tsv)
 
           {
             echo "## Flutter quality gates"
@@ -128,29 +189,36 @@ jobs:
             echo "| Tests failed | ${failed_test_count} |"
             echo "| Analyzer warning/info lines | ${warnings} |"
             echo
-            echo "Artifacts: CI logs, Web build, debug APK, and a release smoke APK are uploaded when available."
+            echo "CI execution logs are uploaded as the quality artifact. Build outputs are validated in-place by the named build gates and are not uploaded to keep hosted-runner artifact handling lightweight."
             echo "The release smoke APK explicitly opts into debug signing for CI only; it is not a distributable release."
+            echo "The release smoke runs on a dedicated fresh runner; the Flutter quality gate remains red unless that job succeeds."
             echo
             echo "### Gate results"
-            awk -F '\t' '{ icon = ($2 == 0 ? "PASS" : "FAIL"); printf "- `%s`: %s (exit %s)\n", $1, icon, $2 }' .ci-logs/gates.tsv
-            if [ "${failed}" -gt 0 ]; then
-              echo
-              echo "### Failed commands"
-              awk -F '\t' '$2 != 0 { printf "- `%s` (exit %s): `%s`\n", $1, $2, $3 }' .ci-logs/gates.tsv
-            fi
+            awk -F '\t' '{ icon = ($2 == "success" ? "PASS" : "FAIL"); printf "- `%s`: %s (%s)\n", $1, icon, $2 }' .ci-logs/gates.tsv
           } >> "${GITHUB_STEP_SUMMARY}"
 
-          exit "${overall_status}"
-
-      - name: Upload CI logs and build artifacts
+      - name: Upload CI logs
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: flutter-quality-gates-${{ github.run_id }}
+          name: flutter-quality-logs-${{ github.run_id }}
           if-no-files-found: warn
           include-hidden-files: true
-          path: |
-            .ci-logs/
-            build/web/
-            build/app/outputs/flutter-apk/app-debug.apk
-            build/app/outputs/flutter-apk/app-release.apk
+          path: .ci-logs/
+
+      - name: Enforce quality result
+        if: always()
+        shell: bash
+        run: |
+          if [[ "${{ steps.tool_versions.outcome }}" != "success" || \
+                "${{ steps.pub_get.outcome }}" != "success" || \
+                "${{ steps.format.outcome }}" != "success" || \
+                "${{ steps.analyze.outcome }}" != "success" || \
+                "${{ steps.test.outcome }}" != "success" || \
+                "${{ steps.web_build.outcome }}" != "success" || \
+                "${{ steps.android_debug_build.outcome }}" != "success" || \
+                "${{ steps.android_release_signing_guard.outcome }}" != "success" || \
+                "${{ needs.android_release_smoke.result }}" != "success" ]]; then
+            echo 'One or more quality gates failed. See the named steps and uploaded logs.'
+            exit 1
+          fi

@@ -134,7 +134,13 @@ Uint8List _encodeRedaction(Map<String, Object> payload) {
     );
   }
 
-  final output = img.encodePng(oriented);
+  // Large 48MP exports must complete inside the low-memory acceptance wall
+  // clock. A filter-free, level-0 PNG avoids the CPU-heavy Paeth/zlib path
+  // while preserving the same lossless pixels and metadata-free boundary.
+  final output = img.PngEncoder(
+    filter: img.PngFilter.none,
+    level: 0,
+  ).encode(oriented);
   _validatePngHeader(
     output,
     expectedWidth: oriented.width,
