@@ -37,6 +37,8 @@ class _TestHarnessState extends State<TestHarness> {
         throw const FormatException('Synthetic fixture could not be decoded.');
       }
       final size = PixelSize(decoded.width, decoded.height);
+      // Test harness intentionally exercises the acceptance-only injection API.
+      // ignore: invalid_use_of_visible_for_testing_member
       _controller.loadImageForTesting(data, 'synthetic-high-res-avd.jpg', size);
       if (!mounted) return;
       setState(() {
