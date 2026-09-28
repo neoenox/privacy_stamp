@@ -188,7 +188,6 @@ class StampController extends ChangeNotifier {
     history: SharedPreferencesExportHistory(),
   );
 
-  @visibleForTesting
   void loadImageForTesting(Uint8List bytes, String name, PixelSize imageSize) {
     if (_disposed) return;
     _bytes = bytes;
@@ -299,12 +298,17 @@ class StampController extends ChangeNotifier {
         final regions = await detector.inspect(Uint8ListImageInput(_bytes!));
         if (!_isCurrent(token)) return PickImageResult.stale;
         if (detector is DetectionServiceGateway) {
-          _lastDetectionSummary = (detector as DetectionServiceGateway).lastSummary;
+          _lastDetectionSummary =
+              (detector as DetectionServiceGateway).lastSummary;
         }
         _detections = List.unmodifiable(regions);
         _pickFailure = null;
 
         if (_detections.isEmpty) {
+          if (_lastDetectionSummary?.hasAnyException ?? false) {
+            _pickFailure = PickImageFailure.detectionFailed;
+            return PickImageResult.detectionFailed;
+          }
           return PickImageResult.detectionEmpty;
         }
         return PickImageResult.selected;
