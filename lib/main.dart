@@ -130,7 +130,7 @@ class _StampHomePageState extends State<StampHomePage> {
           padding: const EdgeInsets.symmetric(horizontal: 12),
           child: Center(
             child: Text(
-              'v${appBuildVersion} ${appBuildSha} 書き出し ${_controller.exportCount}件',
+              'v$appBuildVersion $appBuildSha 書き出し ${_controller.exportCount}件',
               style: const TextStyle(fontSize: 12),
             ),
           ),
