@@ -2,7 +2,6 @@ import 'dart:typed_data';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:privacy_stamp/features/redaction/detection/detector_service.dart';
-import 'package:privacy_stamp/features/redaction/detection/face_detector.dart';
 import 'package:privacy_stamp/features/redaction/models/redaction_models.dart';
 import 'package:privacy_stamp/features/redaction/presentation/stamp_controller.dart';
 
