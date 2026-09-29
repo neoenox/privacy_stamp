@@ -81,14 +81,8 @@ class DetectionResult {
     this.faceCount,
   });
 
-  factory DetectionResult.exception({
-    String? error,
-    dynamic stackTrace,
-  }) =>
-      DetectionResult(
-        outcome: DetectionOutcome.exception,
-        error: error,
-      );
+  factory DetectionResult.exception({String? error, dynamic stackTrace}) =>
+      DetectionResult(outcome: DetectionOutcome.exception, error: error);
 
   factory DetectionResult.empty() =>
       DetectionResult(outcome: DetectionOutcome.empty);

@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:image/image.dart' as image;
+
 import '../tool/acceptance/image_metadata.dart';
 import '../tool/acceptance/generate_synthetic_fixture.dart';
 

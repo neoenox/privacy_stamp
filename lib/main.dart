@@ -117,9 +117,9 @@ class _StampHomePageState extends State<StampHomePage> {
     }
   }
 
-  void _notice(String message) => ScaffoldMessenger.of(
-    context,
-  ).showSnackBar(SnackBar(content: Text(message)));
+  void _notice(String message) =>
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(message)));
 
   @override
   Widget build(BuildContext context) => Scaffold(
@@ -330,8 +330,7 @@ class _EditorState extends State<_Editor> {
         children: [
           const Text(
             '顔・文字・バーコードの候補は自動で追加されます（目安）。漏れがあるため、必ず目視で確認してください。',
-            semanticsLabel:
-                '顔・文字・バーコードの候補は自動で追加されます。必ず目視で確認してください。',
+            semanticsLabel: '顔・文字・バーコードの候補は自動で追加されます。必ず目視で確認してください。',
           ),
           if (widget.automaticCount > 0)
             Padding(
@@ -418,8 +417,7 @@ class _EditorState extends State<_Editor> {
     ),
   );
 
-  Widget _controlButton(
-      String label, IconData icon, VoidCallback onPressed) =>
+  Widget _controlButton(String label, IconData icon, VoidCallback onPressed) =>
       Semantics(
         button: true,
         label: '選択中のマスクを$label',

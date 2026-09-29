@@ -12,8 +12,10 @@ import '../detection/text_detector.dart';
 import '../export/redaction_exporter.dart';
 import '../models/redaction_models.dart';
 
-typedef RedactionEncoder =
-    FutureOr<Uint8List> Function(Uint8List source, List<Stamp> stamps);
+typedef RedactionEncoder = FutureOr<Uint8List> Function(
+  Uint8List source,
+  List<Stamp> stamps,
+);
 
 abstract interface class ImagePickerGateway {
   Future<PickedImage?> pick();
@@ -32,7 +34,13 @@ abstract interface class ExportHistoryGateway {
   Future<void> recordExport();
 }
 
-enum PickImageFailure { picker, decode, detection, detectionEmpty, detectionFailed }
+enum PickImageFailure {
+  picker,
+  decode,
+  detection,
+  detectionEmpty,
+  detectionFailed,
+}
 
 enum PickImageResult {
   selected,
@@ -474,8 +482,7 @@ class StampController extends ChangeNotifier {
       final output = await exporter(bytes, stamps);
       final saved = await saver.save(
         output,
-        fileName:
-            'privacy-stamped-${sanitizeExportBasename(_fileName)}.png',
+        fileName: 'privacy-stamped-${sanitizeExportBasename(_fileName)}.png',
       );
       if (!_isCurrent(token)) return ExportResult.stale;
       if (!saved) return ExportResult.cancelled;

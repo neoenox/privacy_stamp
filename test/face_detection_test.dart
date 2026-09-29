@@ -108,10 +108,7 @@ void main() {
     test('inspectWithDiagnostics returns stored summary', () async {
       final service = DetectionService(
         faceDetector: _FakeFaceDetector(
-          DetectionResult(
-            regions: [],
-            outcome: DetectionOutcome.empty,
-          ),
+          DetectionResult(regions: [], outcome: DetectionOutcome.empty),
         ),
       );
 
@@ -185,9 +182,7 @@ void main() {
         picker: const _Picker(),
         detector: DetectionServiceGateway(
           detector: DetectionService(
-            faceDetector: _FakeFaceDetector(
-              DetectionResult.empty(),
-            ),
+            faceDetector: _FakeFaceDetector(DetectionResult.empty()),
           ),
         ),
         exporter: (source, stamps) => Uint8List.fromList(<int>[1]),

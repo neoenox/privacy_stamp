@@ -91,7 +91,11 @@ class DetectionSummary {
   final List<DetectionRegion> textHits;
   final List<RecognizedTextRegion> textRegions;
 
-  List<DetectionRegion> get allRegions => [...faces.regions, ...codes.regions, ...textHits];
+  List<DetectionRegion> get allRegions => [
+    ...faces.regions,
+    ...codes.regions,
+    ...textHits,
+  ];
 
   bool get hasFaceException => faces.isException;
   bool get hasCodeException => codes.isException;

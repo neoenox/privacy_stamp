@@ -25,9 +25,8 @@ final class AcceptanceMemorySample {
 }
 
 AcceptanceMemorySample parseDumpsysMeminfo(String text, {int? expectedPid}) {
-  final headerPid = RegExp(
-    r'\*\*\s+MEMINFO\s+in\s+pid\s+(\d+)',
-  ).firstMatch(text);
+  final headerPid = RegExp(r'\*\*\s+MEMINFO\s+in\s+pid\s+(\d+)')
+      .firstMatch(text);
   final observedPid = int.tryParse(headerPid?.group(1) ?? '');
   if (expectedPid != null &&
       observedPid != null &&
@@ -99,9 +98,8 @@ AcceptanceMemorySample parseDumpsysMeminfo(String text, {int? expectedPid}) {
 }
 
 (String, int, int?)? _parseSummaryLine(String line) {
-  final match = RegExp(
-    r'^(Java Heap|Native Heap|TOTAL):?\s+(.+)$',
-  ).firstMatch(line);
+  final match = RegExp(r'^(Java Heap|Native Heap|TOTAL):?\s+(.+)$')
+      .firstMatch(line);
   if (match == null) return null;
   final values = _numbers(match.group(2)!);
   if (values.isEmpty) return null;
@@ -268,8 +266,7 @@ Set<AcceptanceRuntimeEventType> parseRuntimeEvents(
 }
 
 int? _threadtimePid(String line) {
-  final match = RegExp(
-    r'^\d\d-\d\d\s+\d\d:\d\d:\d\d\.\d+\s+(\d+)\s+\d+',
-  ).firstMatch(line);
+  final match = RegExp(r'^\d\d-\d\d\s+\d\d:\d\d:\d\d\.\d+\s+(\d+)\s+\d+')
+      .firstMatch(line);
   return int.tryParse(match?.group(1) ?? '');
 }

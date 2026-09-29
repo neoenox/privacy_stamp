@@ -149,8 +149,10 @@ _PreparedImage? _prepareNv21ForBarcode(
         final r = rgba[p];
         final g = rgba[p + 1];
         final b = rgba[p + 2];
-        nv21[yIndex++] = (((66 * r + 129 * g + 25 * b + 128) >> 8) + 16)
-            .clamp(0, 255);
+        nv21[yIndex++] = (((66 * r + 129 * g + 25 * b + 128) >> 8) + 16).clamp(
+          0,
+          255,
+        );
         if (j.isEven && i.isEven) {
           final uvIndex = ySize + (j ~/ 2) * width + i;
           nv21[uvIndex] = (((112 * r - 94 * g - 18 * b + 128) >> 8) + 128)
