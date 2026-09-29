@@ -127,6 +127,14 @@ jobs:
           printf 'Runner: %s\n' "${RUNNER_NAME:-unknown}" | tee -a .ci-logs/android/progress.log
           df -h / | tee .ci-logs/android/disk-before-avd.txt
 
+      - name: Prime adb server
+        shell: bash
+        run: |
+          set -euxo pipefail
+          adb kill-server || true
+          adb start-server
+          adb devices -l
+
       - name: Run synthetic acceptance on low-memory API 35 Google APIs AVD
         uses: reactivecircus/android-emulator-runner@v2
         with:
@@ -142,7 +150,9 @@ jobs:
           heap-size: 256M
           cores: 2
           force-avd-creation: true
-          emulator-options: -no-window -no-audio -no-boot-anim -gpu swiftshader_indirect -memory 1536
+          # Supplying emulator-options replaces the action defaults, so retain
+          # the no-snapshot/camera flags that the runner normally adds.
+          emulator-options: -no-window -no-audio -no-boot-anim -no-snapshot -camera-back none -gpu swiftshader_indirect -memory 1536
           script: bash .github/scripts/run-low-memory-acceptance.sh
 
       - name: Collect Android diagnostics
