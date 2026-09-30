@@ -1,5 +1,6 @@
 import 'dart:typed_data';
 
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:privacy_stamp/features/redaction/models/redaction_models.dart';
 import 'package:privacy_stamp/features/redaction/presentation/stamp_controller.dart';
@@ -15,6 +16,44 @@ void main() {
     expect(controller.pickFailure, isNull);
     expect(controller.hasImage, isFalse);
     expect(controller.isBusy, isFalse);
+  });
+
+  test('platform permission failures are classified without exposing details', () {
+    final failure = pickerFailureForError(
+      const PlatformException(
+        code: 'photo_permission_denied',
+        message: '/private/user/photo-library',
+      ),
+    );
+
+    expect(failure, PickImageFailure.permission);
+  });
+
+  test('preflight separates unsupported formats and oversized files', () {
+    expect(
+      pickedImagePreflightFailure(
+        fileName: 'scan.heic',
+        byteLength: 1024,
+        maxSourceBytes: 2048,
+      ),
+      PickImageFailure.unsupported,
+    );
+    expect(
+      pickedImagePreflightFailure(
+        fileName: 'scan.jpg',
+        byteLength: 4096,
+        maxSourceBytes: 2048,
+      ),
+      PickImageFailure.tooLarge,
+    );
+    expect(
+      pickedImagePreflightFailure(
+        fileName: 'scan.png',
+        byteLength: 1024,
+        maxSourceBytes: 2048,
+      ),
+      isNull,
+    );
   });
 
   test(
@@ -109,8 +148,71 @@ void main() {
     await tester.tap(find.text('画像を選ぶ'));
     await tester.pumpAndSettle();
 
-    expect(find.text('この画像を読み込めませんでした。別の画像を選んでください。'), findsOneWidget);
+    expect(
+      find.text('この画像を読み込めませんでした。破損していない別の画像を選んでください。'),
+      findsOneWidget,
+    );
     expect(find.text('画像を選ぶ'), findsOneWidget);
+  });
+
+  testWidgets('shows permission guidance without exposing platform details', (
+    tester,
+  ) async {
+    final controller = _controller(
+      picker: _QueuePicker(<Object?>[
+        const ImagePickException(PickImageFailure.permission),
+      ]),
+    );
+    await tester.pumpWidget(
+      PrivacyStampApp(home: StampHomePage(controller: controller)),
+    );
+
+    await tester.tap(find.text('画像を選ぶ'));
+    await tester.pumpAndSettle();
+
+    expect(
+      find.text('写真へのアクセスが許可されていません。端末の設定で写真アクセスを許可してから再試行してください。'),
+      findsOneWidget,
+    );
+    expect(find.textContaining('permission'), findsNothing);
+  });
+
+  testWidgets('shows unsupported-format guidance', (tester) async {
+    final controller = _controller(
+      picker: _QueuePicker(<Object?>[
+        const ImagePickException(PickImageFailure.unsupported),
+      ]),
+    );
+    await tester.pumpWidget(
+      PrivacyStampApp(home: StampHomePage(controller: controller)),
+    );
+
+    await tester.tap(find.text('画像を選ぶ'));
+    await tester.pumpAndSettle();
+
+    expect(
+      find.text('この画像形式には対応していません。JPEG、PNG、WebPなどの画像を選んでください。'),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('shows oversized-image guidance', (tester) async {
+    final controller = _controller(
+      picker: _QueuePicker(<Object?>[
+        const ImagePickException(PickImageFailure.tooLarge),
+      ]),
+    );
+    await tester.pumpWidget(
+      PrivacyStampApp(home: StampHomePage(controller: controller)),
+    );
+
+    await tester.tap(find.text('画像を選ぶ'));
+    await tester.pumpAndSettle();
+
+    expect(
+      find.text('画像が大きすぎて安全に読み込めません。解像度またはファイルサイズを下げて再試行してください。'),
+      findsOneWidget,
+    );
   });
 
   testWidgets('detection failure opens the manual editor with guidance', (
