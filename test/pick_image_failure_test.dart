@@ -1,5 +1,3 @@
-import 'dart:typed_data';
-
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:privacy_stamp/features/redaction/models/redaction_models.dart';
@@ -18,16 +16,19 @@ void main() {
     expect(controller.isBusy, isFalse);
   });
 
-  test('platform permission failures are classified without exposing details', () {
-    final failure = pickerFailureForError(
-      PlatformException(
-        code: 'photo_permission_denied',
-        message: '/private/user/photo-library',
-      ),
-    );
+  test(
+    'platform permission failures are classified without exposing details',
+    () {
+      final failure = pickerFailureForError(
+        PlatformException(
+          code: 'photo_permission_denied',
+          message: '/private/user/photo-library',
+        ),
+      );
 
-    expect(failure, PickImageFailure.permission);
-  });
+      expect(failure, PickImageFailure.permission);
+    },
+  );
 
   test('preflight separates unsupported formats and oversized files', () {
     expect(
@@ -148,10 +149,7 @@ void main() {
     await tester.tap(find.text('画像を選ぶ'));
     await tester.pumpAndSettle();
 
-    expect(
-      find.text('この画像を読み込めませんでした。破損していない別の画像を選んでください。'),
-      findsOneWidget,
-    );
+    expect(find.text('この画像を読み込めませんでした。破損していない別の画像を選んでください。'), findsOneWidget);
     expect(find.text('画像を選ぶ'), findsOneWidget);
   });
 

@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:ui';
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart';
@@ -102,8 +101,7 @@ PickImageFailure? pickedImagePreflightFailure({
 
 bool _isOversizedInspectionError(Object error) {
   final message = error.toString();
-  return message.contains('画像ファイルが大きすぎます') ||
-      message.contains('画像の画素数が大きすぎます');
+  return message.contains('画像ファイルが大きすぎます') || message.contains('画像の画素数が大きすぎます');
 }
 
 /// Strips directories, traversal sequences, and unsafe characters from the
