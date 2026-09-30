@@ -167,7 +167,13 @@ jobs:
           # system-wide pressure before A:start and lmkd killed unrelated system
           # processes, so use the permitted 2 GiB upper bound while keeping the
           # same API 35 Google APIs image, 48MP fixture, and all app assertions.
-          disk-size: 2048M
+          # Disk capacity is not part of the low-memory acceptance contract.
+          # API 35 Google APIs needs substantially more writable userdata space
+          # than 2 GiB on current hosted macOS images; constraining disk and RAM
+          # to the same value can leave the emulator ADB-offline before Android
+          # reaches sys.boot_completed. Keep the required 2 GiB RAM ceiling but
+          # give the system image enough disk to cold-boot reliably.
+          disk-size: 6144M
           ram-size: 2048
           heap-size: 256M
           cores: 2
