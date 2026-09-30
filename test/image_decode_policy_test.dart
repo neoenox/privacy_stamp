@@ -58,8 +58,9 @@ void main() {
   );
 
   test('inspection implementation never decodes a full frame', () {
-    final source = File('lib/features/redaction/export/redaction_exporter.dart')
-        .readAsStringSync();
+    final source = File(
+      'lib/features/redaction/export/redaction_exporter.dart',
+    ).readAsStringSync();
     final start = source.indexOf('List<int> _inspectImage');
     final end = source.indexOf('Uint8List _encodeRedaction', start);
     expect(start, greaterThanOrEqualTo(0));
