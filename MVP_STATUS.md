@@ -8,6 +8,15 @@ This document records the repository state, not a production readiness claim.
   `file_picker` selection flow.
 - In-memory image bytes passed through a shared normalized rectangle, detection,
   OCR-region, and stamp contract.
+- On-device ML Kit face detection on native platforms (FAST then ACCURATE retry, downscaled
+  oriented copy, normalized back-mapping, padded boxes), merged with rule-engine
+  hits and exported as automatic stamps with a one-tap clear control.
+- On-device ML Kit text recognition on native platforms (Japanese script,
+  downscaled oriented copy, line-level normalized regions fed to the
+  rule engine for email/phone/postal/card/coordinate/label hits).
+- On-device ML Kit barcode scanning on native platforms (all formats,
+  downscaled oriented copy, normalized back-mapping, padded boxes,
+  every value treated as sensitive).
 - Pure Dart rules for email, Japanese/international phone, postal-code review
   candidates, Luhn-valid card candidates, coordinates, labelled values, and an
   all-OCR-region contract for future detector adapters.
@@ -22,12 +31,9 @@ This document records the repository state, not a production readiness claim.
 
 ## Not implemented
 
-- Android ML Kit face, OCR, and barcode adapters.
-- Web MediaPipe, Tesseract.js, and ZXing local bundled adapters.
-- Automatic detector execution: `DetectionService._localTextDetector` currently
-  returns no recognized text regions, and the UI explicitly says automatic
-  detection is not implemented.
-- Automatic face/barcode/OCR coverage, or a
+- Web MediaPipe face/OCR adapters, Tesseract.js, and ZXing local bundled
+  adapters.
+- Automatic face/text/barcode coverage, or a
   guarantee that all sensitive content is hidden.
 - Android share-intent receiver and system share-out.
 - Google Play Billing purchase/restore, product ID, entitlement state, or an
@@ -47,7 +53,7 @@ compromised devices or browsers, browser extensions, hosting/CDN behavior,
 third-party dependency compromise, or unreviewed metadata and permission
 behavior.
 
-Manual review remains mandatory while automatic detectors are absent. The
+Manual review remains mandatory because automatic detectors can miss content. The
 exporter creates a separate PNG and does not overwrite the selected source;
 tests re-decode output pixels and metadata. Browser DevTools egress inspection
 remains unverified.
@@ -62,7 +68,7 @@ remains unverified.
 | Web artifact | `flutter build web --release` | CI gate; browser use unverified |
 | Android debug artifact | `flutter build apk --debug` | CI gate; device use unverified |
 | Android release smoke | `flutter build apk --release` | CI gate when toolchain permits; not distributable |
-| Privacy behavior | 33 tests including pixel/metadata reinspection | Browser DevTools egress and full device edit/save flow unverified |
+| Privacy behavior | Pixel/metadata reinspection tests | Browser DevTools egress and full device edit/save flow unverified |
 
 The workflow records command exit codes, test and skip counts, analyzer
 warning/info lines, failure commands, logs, and available build artifacts in the
@@ -73,7 +79,8 @@ GitHub Actions summary and artifact bundle.
 - The Android namespace and application ID are now fixed at
   `com.privacy_stamp`; the manifest label is "Privacy Stamp".
 - Release signing is wired via git-ignored `android/key.properties` and
-  falls back to debug signing when the key is absent (CI smoke builds). A
+  fails closed when the key is absent; CI smoke builds explicitly opt into
+  debug signing. A
   production upload key still needs to be generated on a release machine; see
   `docs/RELEASE.md`.
 - Full Android image edit/save interaction, Web Chrome DOM/drag/drop/browser
@@ -83,6 +90,6 @@ GitHub Actions summary and artifact bundle.
   distribution release.
 - A production upload key, a Play Console listing, and the Play App Signing
   enrollment have not been created yet; see `docs/RELEASE.md`.
-- Production work also needs detector adapters, review/coverage UX, exported
+- Production work also needs detector runtime acceptance, review/coverage UX, exported
   pixel reinspection, privacy/network tests, billing/share decisions, and a
   rollback/support plan.

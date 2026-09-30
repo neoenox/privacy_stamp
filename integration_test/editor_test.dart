@@ -62,6 +62,10 @@ void main() {
     await tester.tap(exportButton);
     await tester.pumpAndSettle(const Duration(seconds: 3));
 
+    // Export requires explicit review confirmation.
+    await tester.tap(find.text('確認して書き出す'));
+    await tester.pumpAndSettle(const Duration(seconds: 3));
+
     expect(controller.exportCount, greaterThan(0), reason: 'export recorded');
   });
 }

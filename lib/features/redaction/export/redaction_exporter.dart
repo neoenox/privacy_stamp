@@ -134,12 +134,16 @@ Uint8List _encodeRedaction(Map<String, Object> payload) {
     );
   }
 
-  final output = img.encodePng(oriented);
+  final output = img.PngEncoder(
+    filter: img.PngFilter.none,
+    level: 0,
+  ).encode(oriented);
   _validatePngHeader(
     output,
     expectedWidth: oriented.width,
     expectedHeight: oriented.height,
   );
+  _validateNoPrivacyChunks(output);
   return output;
 }
 
@@ -215,5 +219,25 @@ void _validatePngHeader(
   final height = header.getUint32(20, Endian.big);
   if (width != expectedWidth || height != expectedHeight) {
     throw const FormatException('PNGを書き出せませんでした');
+  }
+}
+
+/// Fail-closed scan for ancillary chunks that could carry EXIF/GPS, ICC,
+/// or text payloads (eXIf/tEXt/iTXt/zTXt/iCCP). pHYs/sBIT are tolerated
+/// because the `image` encoder may emit dimensional chunks without user data.
+void _validateNoPrivacyChunks(Uint8List output) {
+  const forbidden = {'eXIf', 'tEXt', 'iTXt', 'zTXt', 'iCCP'};
+  final data = ByteData.sublistView(output);
+  // Skip 8-byte signature + IHDR chunk (8 + 4 + 4 + 13 + 4 = 33 bytes).
+  var offset = 33;
+  while (offset + 8 <= output.lengthInBytes) {
+    final length = data.getUint32(offset, Endian.big);
+    if (length > output.lengthInBytes) break;
+    final type = String.fromCharCodes(output.sublist(offset + 4, offset + 8));
+    if (forbidden.contains(type)) {
+      throw const FormatException('PNGにメタデータが残っています');
+    }
+    if (type == 'IEND') return;
+    offset += 12 + length;
   }
 }

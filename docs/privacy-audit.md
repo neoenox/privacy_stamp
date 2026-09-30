@@ -71,7 +71,8 @@ reason as `NOT RUN`; do not infer a pass from a successful compile.
 
 `MlKitFaceDetector`, `MlKitTextDetector`, and `MlKitBarcodeDetector` run
 Google ML Kit on-device (Android/iOS). Inference sends no image bytes
-anywhere: each adapter builds a downscaled oriented BGRA `InputImage`
+anywhere: the face adapter builds a downscaled oriented BGRA `InputImage`;
+text and barcode adapters use NV21
 in memory and maps boxes back through normalized coordinates.
 
 Models: all three use Google ML Kit's **bundled model** format
@@ -96,14 +97,14 @@ Caveats for the release gate:
   so callers can distinguish "ran but found no faces" from "ML Kit
   failed". See `lib/features/redaction/detection/face_detector.dart`.
 
-## Verified
+## Candidate verification checklist (not a current PASS record)
 
 Run against the exact release APK produced from the candidate commit, on a
 **physical Android device** (not an emulator). Record the device model,
 Android version, build mode, and commit SHA.
 
-- Release APK (`PRIVACY_STAMP_ALLOW_DEBUG_RELEASE_SIGNING=1` smoke) dumped
-  with `aapt2 dump xmltree`: no `INTERNET`, no `ACCESS_NETWORK_STATE`, no
+- Dump the release APK (`PRIVACY_STAMP_ALLOW_DEBUG_RELEASE_SIGNING=1` smoke)
+  with `aapt2 dump xmltree` and verify: no `INTERNET`, no `ACCESS_NETWORK_STATE`, no
   `usesCleartextTraffic`. Remaining permissions are `BIND_JOB_SERVICE`
   (telemetry transport's own scheduler, inert without network) and `DUMP`
   (standard Flutter profile-install receiver guard). ML Kit components are

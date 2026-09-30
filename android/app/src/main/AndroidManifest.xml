@@ -1,4 +1,16 @@
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+    <!-- Local-only boundary: strip network capabilities merged in from
+         transitive libraries (ML Kit's telemetry transport declares INTERNET
+         and ACCESS_NETWORK_STATE for its own upload path, which this app
+         never uses). Face-model download, when needed, runs inside the
+         Play Services process, not this app's UID. If a future feature
+         genuinely needs network, remove these lines only with an explicit
+         privacy review (see docs/privacy-audit.md). -->
+    <uses-permission android:name="android.permission.INTERNET"
+        tools:node="remove" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"
+        tools:node="remove" />
     <application
         android:label="Privacy Stamp"
         android:name="${applicationName}"
