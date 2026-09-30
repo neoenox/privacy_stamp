@@ -2,7 +2,6 @@ import 'dart:typed_data';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:privacy_stamp/features/redaction/detection/detector_service.dart';
-import 'package:privacy_stamp/features/redaction/detection/face_detector.dart';
 import 'package:privacy_stamp/features/redaction/models/redaction_models.dart';
 import 'package:privacy_stamp/features/redaction/presentation/stamp_controller.dart';
 
@@ -109,10 +108,7 @@ void main() {
     test('inspectWithDiagnostics returns stored summary', () async {
       final service = DetectionService(
         faceDetector: _FakeFaceDetector(
-          DetectionResult(
-            regions: [],
-            outcome: DetectionOutcome.empty,
-          ),
+          DetectionResult(regions: [], outcome: DetectionOutcome.empty),
         ),
       );
 
@@ -186,9 +182,7 @@ void main() {
         picker: const _Picker(),
         detector: DetectionServiceGateway(
           detector: DetectionService(
-            faceDetector: _FakeFaceDetector(
-              DetectionResult.empty(),
-            ),
+            faceDetector: _FakeFaceDetector(DetectionResult.empty()),
           ),
         ),
         exporter: (source, stamps) => Uint8List.fromList(<int>[1]),

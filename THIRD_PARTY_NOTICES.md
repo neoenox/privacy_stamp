@@ -12,6 +12,9 @@ the applicable notices and full license texts for that complete graph.
 | file_picker | MIT |
 | image | MIT |
 | shared_preferences | BSD-3-Clause |
+| google_mlkit_face_detection (+ google_mlkit_commons) | Apache-2.0 |
+| google_mlkit_text_recognition | Apache-2.0 |
+| google_mlkit_barcode_scanning | Apache-2.0 |
 
 ## Direct development dependencies
 
@@ -21,7 +24,7 @@ the applicable notices and full license texts for that complete graph.
 | flutter_lints | BSD-3-Clause |
 
 The detector assets named in the architecture contracts are intentionally not
-bundled: Android ML Kit, Web MediaPipe, Tesseract.js, and ZXing have no current
+bundled: Web MediaPipe, Tesseract.js, and ZXing have no current
 runtime integration or corresponding asset notice here. If they are added,
 record their licenses, versions, redistribution terms, and asset contents
 before shipping.

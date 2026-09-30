@@ -1,4 +1,3 @@
-import 'dart:typed_data';
 import 'dart:ui';
 
 import 'package:flutter/foundation.dart';
@@ -74,7 +73,10 @@ class MlKitFaceDetector implements FaceRegionDetector {
       return detectionResult;
     }
     try {
-      final firstPass = await _detect(input, maxDimension: firstPassMaxDimension);
+      final firstPass = await _detect(
+        input,
+        maxDimension: firstPassMaxDimension,
+      );
 
       if (firstPass.outcome == DetectionOutcome.success &&
           firstPass.regions.isNotEmpty) {
@@ -120,10 +122,9 @@ class MlKitFaceDetector implements FaceRegionDetector {
       if (prepared == null) return DetectionResult.empty();
 
       detector = FaceDetector(
-        options: options ??
-            FaceDetectorOptions(
-              performanceMode: FaceDetectorMode.fast,
-            ),
+        options:
+            options ??
+            FaceDetectorOptions(performanceMode: FaceDetectorMode.fast),
       );
 
       final mlKitInput = InputImage.fromBytes(
@@ -167,10 +168,7 @@ class MlKitFaceDetector implements FaceRegionDetector {
         faceCount: faces.length,
       );
     } catch (e, st) {
-      return DetectionResult.exception(
-        error: e.toString(),
-        stackTrace: st,
-      );
+      return DetectionResult.exception(error: e.toString(), stackTrace: st);
     } finally {
       await detector?.close();
     }

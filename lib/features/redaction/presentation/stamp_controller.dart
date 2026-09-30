@@ -1,8 +1,8 @@
 import 'dart:async';
-import 'dart:ui';
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../detection/barcode_detector.dart';
@@ -32,7 +32,16 @@ abstract interface class ExportHistoryGateway {
   Future<void> recordExport();
 }
 
-enum PickImageFailure { picker, decode, detection, detectionEmpty, detectionFailed }
+enum PickImageFailure {
+  picker,
+  permission,
+  unsupported,
+  tooLarge,
+  decode,
+  detection,
+  detectionEmpty,
+  detectionFailed,
+}
 
 enum PickImageResult {
   selected,
@@ -40,6 +49,9 @@ enum PickImageResult {
   busy,
   stale,
   pickerFailed,
+  permissionDenied,
+  unsupportedFormat,
+  tooLarge,
   decodeFailed,
   detectionFailed,
   detectionEmpty,
@@ -49,6 +61,47 @@ class ImagePickException implements Exception {
   const ImagePickException(this.failure);
 
   final PickImageFailure failure;
+}
+
+PickImageFailure pickerFailureForError(Object error) {
+  if (error is PlatformException) {
+    final marker = '${error.code} ${error.message ?? ''}'.toLowerCase();
+    if (marker.contains('permission') ||
+        marker.contains('denied') ||
+        marker.contains('not_allowed')) {
+      return PickImageFailure.permission;
+    }
+  }
+  return PickImageFailure.picker;
+}
+
+PickImageFailure? pickedImagePreflightFailure({
+  required String fileName,
+  required int byteLength,
+  required int maxSourceBytes,
+}) {
+  if (byteLength > maxSourceBytes) return PickImageFailure.tooLarge;
+
+  final normalized = fileName.trim().toLowerCase();
+  final dot = normalized.lastIndexOf('.');
+  if (dot < 0 || dot == normalized.length - 1) return null;
+  final extension = normalized.substring(dot + 1);
+  const supported = <String>{
+    'jpg',
+    'jpeg',
+    'png',
+    'webp',
+    'gif',
+    'bmp',
+    'tif',
+    'tiff',
+  };
+  return supported.contains(extension) ? null : PickImageFailure.unsupported;
+}
+
+bool _isOversizedInspectionError(Object error) {
+  final message = error.toString();
+  return message.contains('画像ファイルが大きすぎます') || message.contains('画像の画素数が大きすぎます');
 }
 
 /// Strips directories, traversal sequences, and unsafe characters from the
@@ -91,22 +144,39 @@ class FilePickerImageGateway implements ImagePickerGateway {
         type: FileType.image,
         withData: true,
       );
-    } catch (_) {
-      throw const ImagePickException(PickImageFailure.picker);
+    } catch (error) {
+      throw ImagePickException(pickerFailureForError(error));
     }
 
     final file = result?.files.single;
     if (file == null) return null;
+
+    final metadataFailure = pickedImagePreflightFailure(
+      fileName: file.name,
+      byteLength: file.size,
+      maxSourceBytes: inspector.maxSourceBytes,
+    );
+    if (metadataFailure != null) {
+      throw ImagePickException(metadataFailure);
+    }
+
     final bytes = file.bytes;
     if (bytes == null || bytes.isEmpty) {
       throw const ImagePickException(PickImageFailure.decode);
+    }
+    if (bytes.lengthInBytes > inspector.maxSourceBytes) {
+      throw const ImagePickException(PickImageFailure.tooLarge);
     }
 
     try {
       final imageSize = await inspector.inspect(bytes);
       return PickedImage(bytes: bytes, name: file.name, imageSize: imageSize);
-    } catch (_) {
-      throw const ImagePickException(PickImageFailure.decode);
+    } catch (error) {
+      throw ImagePickException(
+        _isOversizedInspectionError(error)
+            ? PickImageFailure.tooLarge
+            : PickImageFailure.decode,
+      );
     }
   }
 }
@@ -188,7 +258,6 @@ class StampController extends ChangeNotifier {
     history: SharedPreferencesExportHistory(),
   );
 
-  @visibleForTesting
   void loadImageForTesting(Uint8List bytes, String name, PixelSize imageSize) {
     if (_disposed) return;
     _bytes = bytes;
@@ -299,12 +368,17 @@ class StampController extends ChangeNotifier {
         final regions = await detector.inspect(Uint8ListImageInput(_bytes!));
         if (!_isCurrent(token)) return PickImageResult.stale;
         if (detector is DetectionServiceGateway) {
-          _lastDetectionSummary = (detector as DetectionServiceGateway).lastSummary;
+          _lastDetectionSummary =
+              (detector as DetectionServiceGateway).lastSummary;
         }
         _detections = List.unmodifiable(regions);
         _pickFailure = null;
 
         if (_detections.isEmpty) {
+          if (_lastDetectionSummary?.hasAnyException ?? false) {
+            _pickFailure = PickImageFailure.detectionFailed;
+            return PickImageResult.detectionFailed;
+          }
           return PickImageResult.detectionEmpty;
         }
         return PickImageResult.selected;
@@ -327,6 +401,9 @@ class StampController extends ChangeNotifier {
   PickImageResult _resultForFailure(PickImageFailure failure) =>
       switch (failure) {
         PickImageFailure.picker => PickImageResult.pickerFailed,
+        PickImageFailure.permission => PickImageResult.permissionDenied,
+        PickImageFailure.unsupported => PickImageResult.unsupportedFormat,
+        PickImageFailure.tooLarge => PickImageResult.tooLarge,
         PickImageFailure.decode => PickImageResult.decodeFailed,
         PickImageFailure.detection => PickImageResult.detectionFailed,
         PickImageFailure.detectionEmpty => PickImageResult.detectionEmpty,
@@ -470,8 +547,7 @@ class StampController extends ChangeNotifier {
       final output = await exporter(bytes, stamps);
       final saved = await saver.save(
         output,
-        fileName:
-            'privacy-stamped-${sanitizeExportBasename(_fileName)}.png',
+        fileName: 'privacy-stamped-${sanitizeExportBasename(_fileName)}.png',
       );
       if (!_isCurrent(token)) return ExportResult.stale;
       if (!saved) return ExportResult.cancelled;

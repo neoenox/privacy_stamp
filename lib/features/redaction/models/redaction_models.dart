@@ -50,15 +50,15 @@ class RecognizedTextRegion {
 }
 
 class Stamp {
-  Stamp({
+  const Stamp({
     required this.id,
     required this.rect,
     this.kind = 'black',
     this.isAutomatic = false,
   });
   final String id;
-  NormalizedRect rect;
-  String kind;
+  final NormalizedRect rect;
+  final String kind;
   final bool isAutomatic;
 
   Stamp copyWith({NormalizedRect? rect, String? kind}) => Stamp(
@@ -81,14 +81,8 @@ class DetectionResult {
     this.faceCount,
   });
 
-  factory DetectionResult.exception({
-    String? error,
-    dynamic stackTrace,
-  }) =>
-      DetectionResult(
-        outcome: DetectionOutcome.exception,
-        error: error,
-      );
+  factory DetectionResult.exception({String? error, dynamic stackTrace}) =>
+      DetectionResult(outcome: DetectionOutcome.exception, error: error);
 
   factory DetectionResult.empty() =>
       DetectionResult(outcome: DetectionOutcome.empty);

@@ -71,7 +71,7 @@ jobs:
 
           run_gate tool_versions bash -c 'flutter --version && dart --version && java -version'
           run_gate pub_get flutter pub get
-          run_gate format dart format --output=none --set-exit-if-changed .
+          run_gate format bash -c 'git ls-files -z "*.dart" | xargs -0 dart format --output=none --set-exit-if-changed'
           run_gate analyze flutter analyze --fatal-infos
           run_gate test flutter test --reporter json
           run_gate web_build flutter build web --release

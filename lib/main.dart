@@ -64,8 +64,14 @@ class _StampHomePageState extends State<StampHomePage> {
         break;
       case PickImageResult.pickerFailed:
         _notice('画像を選択できませんでした。もう一度お試しください。');
+      case PickImageResult.permissionDenied:
+        _notice('写真へのアクセスが許可されていません。端末の設定で写真アクセスを許可してから再試行してください。');
+      case PickImageResult.unsupportedFormat:
+        _notice('この画像形式には対応していません。JPEG、PNG、WebPなどの画像を選んでください。');
+      case PickImageResult.tooLarge:
+        _notice('画像が大きすぎて安全に読み込めません。解像度またはファイルサイズを下げて再試行してください。');
       case PickImageResult.decodeFailed:
-        _notice('この画像を読み込めませんでした。別の画像を選んでください。');
+        _notice('この画像を読み込めませんでした。破損していない別の画像を選んでください。');
       case PickImageResult.detectionEmpty:
         _notice('自動検出で領域が見つかりませんでした。手動でマスクしてください。');
       case PickImageResult.detectionFailed:
@@ -130,7 +136,7 @@ class _StampHomePageState extends State<StampHomePage> {
           padding: const EdgeInsets.symmetric(horizontal: 12),
           child: Center(
             child: Text(
-              'v${appBuildVersion} ${appBuildSha} 書き出し ${_controller.exportCount}件',
+              'v$appBuildVersion $appBuildSha 書き出し ${_controller.exportCount}件',
               style: const TextStyle(fontSize: 12),
             ),
           ),
@@ -330,8 +336,7 @@ class _EditorState extends State<_Editor> {
         children: [
           const Text(
             '顔・文字・バーコードの候補は自動で追加されます（目安）。漏れがあるため、必ず目視で確認してください。',
-            semanticsLabel:
-                '顔・文字・バーコードの候補は自動で追加されます。必ず目視で確認してください。',
+            semanticsLabel: '顔・文字・バーコードの候補は自動で追加されます。必ず目視で確認してください。',
           ),
           if (widget.automaticCount > 0)
             Padding(
@@ -418,8 +423,7 @@ class _EditorState extends State<_Editor> {
     ),
   );
 
-  Widget _controlButton(
-      String label, IconData icon, VoidCallback onPressed) =>
+  Widget _controlButton(String label, IconData icon, VoidCallback onPressed) =>
       Semantics(
         button: true,
         label: '選択中のマスクを$label',
