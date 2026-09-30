@@ -120,6 +120,8 @@ jobs:
           test -r /dev/kvm
           test -w /dev/kvm
           command -v timeout
+          test -x "$ANDROID_HOME/platform-tools/adb"
+          echo "$ANDROID_HOME/platform-tools" >> "$GITHUB_PATH"
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
