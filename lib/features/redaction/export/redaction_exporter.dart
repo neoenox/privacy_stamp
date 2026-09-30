@@ -136,7 +136,9 @@ Uint8List _encodeRedaction(Map<String, Object> payload) {
 
   final output = img.PngEncoder(
     filter: img.PngFilter.none,
-    level: 0,
+    // Uncompressed 48MP PNGs expand multiple large intermediate buffers and
+    // exhaust a 2 GiB Android guest. Fast compression bounds output memory.
+    level: 1,
   ).encode(oriented);
   _validatePngHeader(
     output,

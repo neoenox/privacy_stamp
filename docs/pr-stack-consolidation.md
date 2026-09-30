@@ -30,3 +30,13 @@ this branch. Branches are retained for provenance.
 - Exact-candidate release face/OCR/barcode runtime and privacy/network audits
   remain required. Build success alone is not detector acceptance.
 - No production signing, Secrets, Play Console, release or deployment changes.
+
+## Acceptance repairs
+
+The restored level-0 PNG encoder reproduced an Out of Memory failure inside
+OutputBuffer expansion on the 2 GiB API 35 Windows AVD. Level 1 retains lossless
+pixels and metadata stripping while avoiding uncompressed 48MP output buffers.
+The live test now awaits export completion with a six-minute bound within the
+unchanged 12-minute A–C limit, and resumes before pumping lifecycle frames.
+The emulator must use -lowram: without it version 37 raises guest RAM to 2560MB,
+which the existing MemTotal gate correctly rejects.

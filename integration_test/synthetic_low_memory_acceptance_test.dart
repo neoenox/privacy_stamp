@@ -187,7 +187,21 @@ StampController _controller({
 }) => StampController(
   picker: picker,
   detector: _NoopDetector(diagnosticLabel),
-  exporter: const RedactionExporter().encodeAsync,
+  exporter: (source, stamps) async {
+    try {
+      final output = await const RedactionExporter().encodeAsync(
+        source,
+        stamps,
+      );
+      _milestone('$diagnosticLabel:encoder-return bytes=${output.length}');
+      return output;
+    } catch (error, stack) {
+      // This entry point processes only the public synthetic fixture.
+      // ignore: avoid_print
+      print('ACCEPTANCE_EXPORT_ERROR $error $stack');
+      rethrow;
+    }
+  },
   saver: saver,
   history: const _InMemoryHistory(),
 );
