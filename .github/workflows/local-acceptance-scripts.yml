@@ -94,11 +94,10 @@ jobs:
 
   android-low-memory-acceptance:
     name: Android synthetic high-resolution low-memory acceptance
-    # The standard Ubuntu runner exposed no usable /dev/kvm in run
-    # 32816566466, so API 35 x86_64 stayed offline until the boot timeout.
-    # Use GitHub's standard Intel macOS runner so the Android emulator can use
-    # host virtualization without weakening the x86_64 / 1-2 GiB acceptance.
-    runs-on: macos-15-intel
+    # macOS run 36703557294 reached A:start with the correct 2 GiB guest but
+    # stalled on the first rendered image frame. Require usable KVM explicitly
+    # on Linux rather than silently falling back to software virtualization.
+    runs-on: ubuntu-24.04
     # The 2 GiB Google APIs image can spend close to 15 minutes draining first-
     # boot broadcasts after sys.boot_completed=1. This job timeout covers that
     # bounded infrastructure stabilization plus the unchanged 12-minute A-C
@@ -109,14 +108,18 @@ jobs:
         with:
           persist-credentials: false
           ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
-      - name: Prepare macOS acceptance tools
+      - name: Enable and verify KVM for Android acceptance
         shell: bash
         run: |
           set -euxo pipefail
           df -h /
-          brew install coreutils
-          command -v gtimeout
-          df -h /
+          test -c /dev/kvm
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+          test -r /dev/kvm
+          test -w /dev/kvm
+          command -v timeout
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
@@ -186,7 +189,7 @@ jobs:
           # -lowram prevents current emulator versions from silently raising
           # RAM to the API 35 image's 2560MB minimum. Keep the 6 GiB writable
           # disk needed for boot; acceptance still rejects MemTotal above 2 GiB.
-          emulator-options: -no-window -noaudio -no-boot-anim -gpu swiftshader_indirect -memory 2048 -lowram -no-snapshot-load -no-snapshot-save -camera-back none -camera-front none
+          emulator-options: -no-window -noaudio -no-boot-anim -gpu swiftshader_indirect -memory 2048 -lowram -no-snapshot-load -no-snapshot-save -camera-back none -camera-front none -accel on
           script: bash .github/scripts/run-low-memory-acceptance-ci.sh
 
       - name: Collect Android diagnostics
