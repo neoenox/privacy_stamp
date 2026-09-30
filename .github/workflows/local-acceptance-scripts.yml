@@ -183,11 +183,10 @@ jobs:
           # This extends infrastructure boot wait only; the acceptance script's
           # own 12-minute wall-clock and all Issue #17 assertions stay unchanged.
           emulator-boot-timeout: 900
-          # Keep the acceptance constrained by the explicit 2 GiB guest instead of
-          # Android's -lowram feature flag. Repeated macOS Intel runs with emulator
-          # 37.1.11 stayed ADB-offline for the full boot window before Android could
-          # reach sys.boot_completed. The memory ceiling remains unchanged.
-          emulator-options: -no-window -noaudio -no-boot-anim -gpu swiftshader_indirect -memory 2048 -no-snapshot-load -no-snapshot-save -camera-back none -camera-front none
+          # -lowram prevents current emulator versions from silently raising
+          # RAM to the API 35 image's 2560MB minimum. Keep the 6 GiB writable
+          # disk needed for boot; acceptance still rejects MemTotal above 2 GiB.
+          emulator-options: -no-window -noaudio -no-boot-anim -gpu swiftshader_indirect -memory 2048 -lowram -no-snapshot-load -no-snapshot-save -camera-back none -camera-front none
           script: bash .github/scripts/run-low-memory-acceptance-ci.sh
 
       - name: Collect Android diagnostics

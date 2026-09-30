@@ -152,7 +152,7 @@ void main() {
         workflow,
         contains(
           'emulator-options: -no-window -noaudio -no-boot-anim '
-          '-gpu swiftshader_indirect -memory 2048 '
+          '-gpu swiftshader_indirect -memory 2048 -lowram '
           '-no-snapshot-load -no-snapshot-save '
           '-camera-back none -camera-front none',
         ),
