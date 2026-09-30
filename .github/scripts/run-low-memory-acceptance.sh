@@ -362,7 +362,7 @@ fi
 adb shell monkey -p "$package" -c android.intent.category.LAUNCHER 1 >/dev/null 2>&1
 new_pid=''
 for _ in $(seq 1 30); do
-  new_pid=$(adb shell pidof "$package" 2>/dev/null | tr -d '\r' | awk '{print $1}')
+  new_pid=$(adb shell pidof "$package" 2>/dev/null | tr -d '\r' | awk '{print $1}') || true
   [[ "$new_pid" =~ ^[0-9]+$ ]] && break
   sleep 1
 done
