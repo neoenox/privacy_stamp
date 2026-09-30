@@ -148,7 +148,17 @@ void main() {
         contains('ram-size: 2048'),
         reason: 'Issue #17 permits a 1-2 GiB guest; use the 2 GiB upper bound.',
       );
-      expect(workflow, contains('-memory 2048 -lowram'));
+      expect(workflow, contains('-memory 2048'));
+      expect(
+        workflow,
+        isNot(contains(' -lowram')),
+        reason:
+            'The acceptance memory bound is the explicit 2 GiB guest. The '
+            'Android -lowram feature flag caused repeated pre-boot ADB-offline '
+            'runs on the macOS Intel runner and is not part of the Issue #17 '
+            'memory acceptance contract.',
+      );
+      expect(workflow, contains('-no-snapshot-load -no-snapshot-save'));
       expect(workflow, contains('emulator-boot-timeout: 900'));
       expect(
         workflow,
