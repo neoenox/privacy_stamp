@@ -20,7 +20,7 @@ void main() {
 
   test('platform permission failures are classified without exposing details', () {
     final failure = pickerFailureForError(
-      const PlatformException(
+      PlatformException(
         code: 'photo_permission_denied',
         message: '/private/user/photo-library',
       ),
