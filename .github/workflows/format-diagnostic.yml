@@ -1,0 +1,24 @@
+name: Format diff diagnostic
+
+on:
+  push:
+    branches:
+      - fix/post-face-detection-ci
+
+jobs:
+  diff:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: "3.44.0"
+          channel: stable
+          cache: true
+      - run: flutter pub get
+      - name: Print tracked Dart format diff
+        shell: bash
+        run: |
+          git ls-files -z "*.dart" | xargs -0 dart format
+          git diff -- "*.dart"
+          test -z "$(git status --short --untracked-files=no)"
