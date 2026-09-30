@@ -115,38 +115,47 @@ void main() {
     },
   );
 
-  test('supports manual mask move, resize, and removal without touching detections', () async {
-    final controller = StampController(
-      picker: _FakePicker(const _PickedImage()),
-      detector: _FakeDetector(result: const []),
-      exporter: (source, stamps) => Uint8List.fromList([1]),
-      saver: _FakeSaver(),
-      history: _FakeHistory(),
-    );
-    await controller.pickImage();
-    controller.addManualStamp();
-    final stamp = controller.manualStamps.single;
-    final original = stamp.rect;
+  test(
+    'supports manual mask move, resize, and removal without touching detections',
+    () async {
+      final controller = StampController(
+        picker: _FakePicker(const _PickedImage()),
+        detector: _FakeDetector(result: const []),
+        exporter: (source, stamps) => Uint8List.fromList([1]),
+        saver: _FakeSaver(),
+        history: _FakeHistory(),
+      );
+      await controller.pickImage();
+      controller.addManualStamp();
+      final stamp = controller.manualStamps.single;
+      final original = stamp.rect;
 
-    controller.moveManualStamp(stamp.id, const Offset(.1, .05));
-    expect(
-      controller.manualStamps.single.rect.left,
-      greaterThan(original.left),
-    );
-    expect(controller.manualStamps.single.rect.top, greaterThan(original.top));
+      controller.moveManualStamp(stamp.id, const Offset(.1, .05));
+      expect(
+        controller.manualStamps.single.rect.left,
+        greaterThan(original.left),
+      );
+      expect(
+        controller.manualStamps.single.rect.top,
+        greaterThan(original.top),
+      );
 
-    final moved = controller.manualStamps.single.rect;
-    controller.resizeManualStamp(stamp.id, const Offset(.1, .1));
-    expect(controller.manualStamps.single.rect.width, greaterThan(moved.width));
-    expect(
-      controller.manualStamps.single.rect.height,
-      greaterThan(moved.height),
-    );
+      final moved = controller.manualStamps.single.rect;
+      controller.resizeManualStamp(stamp.id, const Offset(.1, .1));
+      expect(
+        controller.manualStamps.single.rect.width,
+        greaterThan(moved.width),
+      );
+      expect(
+        controller.manualStamps.single.rect.height,
+        greaterThan(moved.height),
+      );
 
-    controller.removeManualStamp(stamp.id);
-    expect(controller.manualStamps, isEmpty);
-    expect(controller.detections, isEmpty);
-  });
+      controller.removeManualStamp(stamp.id);
+      expect(controller.manualStamps, isEmpty);
+      expect(controller.detections, isEmpty);
+    },
+  );
 
   test('does not notify or apply stale detection after dispose', () async {
     final detectionCompleter = Completer<List<DetectionRegion>>();
