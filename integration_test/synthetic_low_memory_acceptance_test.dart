@@ -85,7 +85,11 @@ void main() {
       _milestone('A:export-confirmation-visible');
       await tester.tap(find.widgetWithText(FilledButton, '確認して書き出す'));
       _milestone('A:export-confirmed');
-      await _pumpBounded(tester, frames: 100);
+      await _pumpUntil(
+        tester,
+        () => !controller.isBusy,
+        timeout: const Duration(minutes: 6),
+      );
       _milestone('A:export-pump-complete');
 
       expect(controller.exportCount, 1);
@@ -143,7 +147,8 @@ void main() {
       expect(controller.hasImage, isTrue);
 
       tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.paused);
-      await tester.pump();
+      expect(tester.binding.lifecycleState, AppLifecycleState.paused);
+      // A live binding cannot render a frame while paused. Resume first.
       tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
       await tester.pump();
       expect(tester.takeException(), isNull);
@@ -234,6 +239,20 @@ Future<void> _pumpBounded(
   }
   if (diagnosticLabel != null) {
     _milestone('$diagnosticLabel:pump-complete');
+  }
+}
+
+Future<void> _pumpUntil(
+  WidgetTester tester,
+  bool Function() complete, {
+  required Duration timeout,
+}) async {
+  final clock = Stopwatch()..start();
+  while (!complete()) {
+    if (clock.elapsed >= timeout) {
+      fail('Export did not complete within the bounded acceptance wait.');
+    }
+    await tester.pump(const Duration(milliseconds: 100));
   }
 }
 
