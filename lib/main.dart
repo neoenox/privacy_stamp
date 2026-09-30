@@ -117,9 +117,9 @@ class _StampHomePageState extends State<StampHomePage> {
     }
   }
 
-  void _notice(String message) =>
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text(message)));
+  void _notice(String message) => ScaffoldMessenger.of(
+    context,
+  ).showSnackBar(SnackBar(content: Text(message)));
 
   @override
   Widget build(BuildContext context) => Scaffold(
