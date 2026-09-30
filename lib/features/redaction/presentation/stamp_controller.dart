@@ -12,10 +12,8 @@ import '../detection/text_detector.dart';
 import '../export/redaction_exporter.dart';
 import '../models/redaction_models.dart';
 
-typedef RedactionEncoder = FutureOr<Uint8List> Function(
-  Uint8List source,
-  List<Stamp> stamps,
-);
+typedef RedactionEncoder =
+    FutureOr<Uint8List> Function(Uint8List source, List<Stamp> stamps);
 
 abstract interface class ImagePickerGateway {
   Future<PickedImage?> pick();
