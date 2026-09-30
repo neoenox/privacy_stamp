@@ -148,88 +148,14 @@ void main() {
         contains('ram-size: 2048'),
         reason: 'Issue #17 permits a 1-2 GiB guest; use the 2 GiB upper bound.',
       );
-      final emulatorOptions = RegExp(
-        r'^\\s*emulator-options:\\s*(.+)
-      expect(workflow, contains('emulator-boot-timeout: 900'));
       expect(
         workflow,
         contains(
-          'script: bash .github/scripts/run-low-memory-acceptance-ci.sh',
+          'emulator-options: -no-window -noaudio -no-boot-anim '
+          '-gpu swiftshader_indirect -memory 2048 '
+          '-no-snapshot-load -no-snapshot-save '
+          '-camera-back none -camera-front none',
         ),
-      );
-      expect(
-        script,
-        contains('12m'),
-        reason: 'The A-C acceptance wall clock must remain 12 minutes.',
-      );
-    },
-  );
-
-  test('disables DDS for flutter drive on the low-memory Android emulator', () {
-    final ciWrapper = File(
-      '.github/scripts/run-low-memory-acceptance-ci.sh',
-    ).readAsStringSync();
-
-    expect(ciWrapper, contains(r'real_flutter="$(command -v flutter)"'));
-    expect(ciWrapper, contains(r'if [[ "${1:-}" == "drive" ]]'));
-    expect(ciWrapper, contains(r'exec "$REAL_FLUTTER" "$@" --no-dds'));
-    expect(ciWrapper, contains(r'export REAL_FLUTTER="$real_flutter"'));
-  });
-
-  test('does not contend with flutter drive while VM service starts', () {
-    final script = File(
-      '.github/scripts/run-low-memory-acceptance.sh',
-    ).readAsStringSync();
-
-    expect(
-      script,
-      contains(r'''grep -q 'ACCEPTANCE_MILESTONE .* A:start' "$log"'''),
-      reason: 'ADB memory sampling must wait until flutter drive is attached.',
-    );
-    expect(
-      script.indexOf("grep -q 'ACCEPTANCE_MILESTONE .* A:start'"),
-      lessThan(script.indexOf(r'pid=$(adb shell pidof')),
-    );
-  });
-
-  test('samples PSS without invoking the application dump callback', () {
-    final script = File(
-      '.github/scripts/run-low-memory-acceptance.sh',
-    ).readAsStringSync();
-
-    expect(
-      script,
-      contains(r'adb shell run-as "$package" cat "/proc/$pid/smaps_rollup"'),
-      reason:
-          'PSS collection must read the debuggable app process directly '
-          'instead of serializing through system_server.',
-    );
-    expect(
-      script,
-      isNot(contains('dumpsys meminfo')),
-      reason:
-          'Periodic dumpsys meminfo can stall system_server on the low-memory '
-          'Google APIs guest.',
-    );
-  });
-}
-,
-        multiLine: true,
-      ).firstMatch(workflow)?.group(1);
-      expect(emulatorOptions, isNotNull);
-      expect(emulatorOptions, contains('-memory 2048'));
-      expect(
-        emulatorOptions,
-        isNot(contains('-lowram')),
-        reason:
-            'The acceptance memory bound is the explicit 2 GiB guest. The '
-            'Android low-RAM feature flag caused repeated pre-boot ADB-offline '
-            'runs on the macOS Intel runner and is not part of the Issue #17 '
-            'memory acceptance contract.',
-      );
-      expect(
-        emulatorOptions,
-        contains('-no-snapshot-load -no-snapshot-save'),
       );
       expect(workflow, contains('emulator-boot-timeout: 900'));
       expect(
