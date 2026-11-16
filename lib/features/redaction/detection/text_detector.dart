@@ -105,7 +105,9 @@ class MlKitTextDetector implements app.TextRegionDetector {
         await recognizer.close();
       }
     } catch (_) {
-      return app.TextDetectionResult.exception(error: 'text detection failed');
+      return app.TextDetectionResult.exception(
+        error: 'text detection failed',
+      );
     }
   }
 }
@@ -162,10 +164,10 @@ _PreparedImage? _prepareNv21ForText(
         );
         if (j.isEven && i.isEven) {
           final uvIndex = ySize + (j ~/ 2) * width + i;
-          nv21[uvIndex] = (((112 * r - 94 * g - 18 * b + 128) >> 8) + 128)
-              .clamp(0, 255);
-          nv21[uvIndex + 1] = (((-38 * r - 74 * g + 112 * b + 128) >> 8) + 128)
-              .clamp(0, 255);
+          nv21[uvIndex] =
+              (((112 * r - 94 * g - 18 * b + 128) >> 8) + 128).clamp(0, 255);
+          nv21[uvIndex + 1] =
+              (((-38 * r - 74 * g + 112 * b + 128) >> 8) + 128).clamp(0, 255);
         }
       }
     }
