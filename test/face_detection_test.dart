@@ -204,7 +204,9 @@ void main() {
       expect(controller.automaticCount, 0);
     });
 
-    test('reports partial failure when OCR fails but face detection succeeds', () async {
+    test(
+      'reports partial failure when OCR fails but face detection succeeds',
+      () async {
       final controller = StampController(
         picker: const _Picker(),
         detector: DetectionServiceGateway(
@@ -236,7 +238,8 @@ void main() {
       expect(controller.automaticCount, 1);
       expect(controller.lastDetectionSummary!.hasTextException, isTrue);
       expect(controller.lastDetectionSummary!.hasAnyFailure, isTrue);
-    });
+      },
+    );
 
     test('detectionFailed when detector throws', () async {
       final controller = StampController(
