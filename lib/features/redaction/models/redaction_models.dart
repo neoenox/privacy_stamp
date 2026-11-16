@@ -69,7 +69,39 @@ class Stamp {
   );
 }
 
-enum DetectionOutcome { empty, success, exception }
+enum DetectionOutcome { empty, success, exception, unsupported }
+
+class TextDetectionResult {
+  const TextDetectionResult({
+    this.regions = const [],
+    required this.outcome,
+    this.error,
+  });
+
+  factory TextDetectionResult.fromRegions(List<RecognizedTextRegion> regions) =>
+      TextDetectionResult(
+        regions: List.unmodifiable(regions),
+        outcome: regions.isEmpty ? DetectionOutcome.empty : DetectionOutcome.success,
+      );
+
+  factory TextDetectionResult.empty() =>
+      const TextDetectionResult(outcome: DetectionOutcome.empty);
+
+  factory TextDetectionResult.unsupported() =>
+      const TextDetectionResult(outcome: DetectionOutcome.unsupported);
+
+  factory TextDetectionResult.exception({String? error}) =>
+      TextDetectionResult(outcome: DetectionOutcome.exception, error: error);
+
+  final List<RecognizedTextRegion> regions;
+  final DetectionOutcome outcome;
+  final String? error;
+
+  bool get isException => outcome == DetectionOutcome.exception;
+  bool get isUnsupported => outcome == DetectionOutcome.unsupported;
+  bool get isSuccess => outcome == DetectionOutcome.success;
+}
+
 
 class DetectionResult {
   DetectionResult({
@@ -104,7 +136,7 @@ abstract interface class FaceRegionDetector {
 }
 
 abstract interface class TextRegionDetector {
-  Future<List<RecognizedTextRegion>> detect(Uint8ListImageInput input);
+  Future<TextDetectionResult> detect(Uint8ListImageInput input);
 }
 
 abstract interface class CodeRegionDetector {
