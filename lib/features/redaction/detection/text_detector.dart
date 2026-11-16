@@ -26,9 +26,9 @@ class NoopTextDetector implements app.TextRegionDetector {
   const NoopTextDetector();
 
   @override
-  Future<List<app.RecognizedTextRegion>> detect(
+  Future<app.TextDetectionResult> detect(
     app.Uint8ListImageInput input,
-  ) async => const [];
+  ) async => app.TextDetectionResult.empty();
 }
 
 /// On-device OCR via Google ML Kit Text Recognition (Android/iOS).
@@ -50,16 +50,20 @@ class MlKitTextDetector implements app.TextRegionDetector {
   final int maxDetectionDimension;
 
   @override
-  Future<List<app.RecognizedTextRegion>> detect(
+  Future<app.TextDetectionResult> detect(
     app.Uint8ListImageInput input,
   ) async {
-    if (kIsWeb) return const [];
+    if (kIsWeb) return app.TextDetectionResult.unsupported();
     try {
       final prepared = await compute(
         _prepareNv21ForTextWorker,
         _PrepareTextPayload(input, maxDetectionDimension),
       );
-      if (prepared == null) return const [];
+      if (prepared == null) {
+        return app.TextDetectionResult.exception(
+          error: 'text image preparation failed',
+        );
+      }
 
       final mlKitInput = InputImage.fromBytes(
         bytes: prepared.bytes,
@@ -96,12 +100,12 @@ class MlKitTextDetector implements app.TextRegionDetector {
             );
           }
         }
-        return regions;
+        return app.TextDetectionResult.fromRegions(regions);
       } finally {
         await recognizer.close();
       }
     } catch (_) {
-      return const [];
+      return app.TextDetectionResult.exception(error: 'text detection failed');
     }
   }
 }
