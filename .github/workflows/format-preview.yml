@@ -1,9 +1,9 @@
 name: Format preview (temporary)
 
 on:
-  push:
+  pull_request:
     branches:
-      - fix/issue-56-surface-ocr-failures-20261117
+      - main
 
 permissions:
   contents: read
