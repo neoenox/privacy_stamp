@@ -14,6 +14,7 @@ class DetectionService {
        _faceDetector = faceDetector ?? const NoopFaceDetector(),
        _textDetector = textDetector ?? const NoopTextDetector(),
        _codeDetector = codeDetector ?? const NoopCodeDetector();
+
   final SensitiveRuleEngine _rules;
   final FaceRegionDetector _faceDetector;
   final TextRegionDetector _textDetector;
@@ -25,13 +26,16 @@ class DetectionService {
     Uint8ListImageInput input, {
     bool hideAllText = false,
   }) async {
-    List<RecognizedTextRegion> textRegions;
+    TextDetectionResult textResult;
     try {
-      textRegions = await _textDetector.detect(input);
+      textResult = await _textDetector.detect(input);
     } catch (_) {
-      textRegions = const [];
+      textResult = TextDetectionResult.exception(error: 'text detection failed');
     }
-    final textHits = _rules.detect(textRegions, hideAllText: hideAllText);
+    final textHits = _rules.detect(
+      textResult.regions,
+      hideAllText: hideAllText,
+    );
 
     DetectionResult faceResult;
     try {
@@ -56,8 +60,8 @@ class DetectionService {
     lastSummary = DetectionSummary(
       faces: faceResult,
       codes: codeResult,
+      text: textResult,
       textHits: textHits,
-      textRegions: textRegions,
     );
 
     return [...faceResult.regions, ...codeResult.regions, ...textHits];
@@ -72,8 +76,8 @@ class DetectionService {
         DetectionSummary(
           faces: DetectionResult.empty(),
           codes: DetectionResult.empty(),
+          text: TextDetectionResult.empty(),
           textHits: regions,
-          textRegions: const [],
         );
   }
 }
@@ -82,14 +86,14 @@ class DetectionSummary {
   DetectionSummary({
     required this.faces,
     required this.codes,
+    required this.text,
     required this.textHits,
-    required this.textRegions,
   });
 
   final DetectionResult faces;
   final DetectionResult codes;
+  final TextDetectionResult text;
   final List<DetectionRegion> textHits;
-  final List<RecognizedTextRegion> textRegions;
 
   List<DetectionRegion> get allRegions => [
     ...faces.regions,
@@ -99,5 +103,9 @@ class DetectionSummary {
 
   bool get hasFaceException => faces.isException;
   bool get hasCodeException => codes.isException;
-  bool get hasAnyException => faces.isException || codes.isException;
+  bool get hasTextException => text.isException;
+  bool get hasTextUnsupported => text.isUnsupported;
+  bool get hasAnyException =>
+      faces.isException || codes.isException || text.isException;
+  bool get hasAnyFailure => hasAnyException || hasTextUnsupported;
 }
