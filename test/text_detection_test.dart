@@ -42,7 +42,9 @@ void main() {
       expect(service.lastSummary!.text.isSuccess, isTrue);
     });
 
-    test('text detector exception remains distinguishable from empty OCR', () async {
+    test(
+      'text detector exception remains distinguishable from empty OCR',
+      () async {
       final service = DetectionService(
         textDetector: const _ThrowingTextDetector(),
       );
@@ -64,15 +66,20 @@ void main() {
       expect(service.lastSummary!.hasAnyException, isFalse);
     });
 
-    test('MlKitTextDetector returns a diagnostic for invalid image input', () async {
+    test(
+      'MlKitTextDetector returns a diagnostic for invalid image input',
+      () async {
       final detector = MlKitTextDetector();
       final result = await detector.detect(
         Uint8ListImageInput(Uint8List.fromList([0, 1, 2, 3])),
       );
-      expect(result.outcome, anyOf(
-        DetectionOutcome.exception,
-        DetectionOutcome.unsupported,
-      ));
+      expect(
+        result.outcome,
+        anyOf(
+          DetectionOutcome.exception,
+          DetectionOutcome.unsupported,
+        ),
+      );
       expect(result.regions, isEmpty);
     });
 
