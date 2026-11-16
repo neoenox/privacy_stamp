@@ -30,7 +30,9 @@ class DetectionService {
     try {
       textResult = await _textDetector.detect(input);
     } catch (_) {
-      textResult = TextDetectionResult.exception(error: 'text detection failed');
+      textResult = TextDetectionResult.exception(
+        error: 'text detection failed',
+      );
     }
     final textHits = _rules.detect(
       textResult.regions,
