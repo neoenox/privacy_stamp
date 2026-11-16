@@ -75,7 +75,7 @@ class _StampHomePageState extends State<StampHomePage> {
       case PickImageResult.detectionEmpty:
         _notice('自動検出で領域が見つかりませんでした。手動でマスクしてください。');
       case PickImageResult.detectionFailed:
-        _notice('画像の自動確認に失敗しました。画像は手動で編集できます。');
+        _notice('一部または全部の自動検出に失敗しました。候補の有無にかかわらず、画像全体を手動で確認してください。');
     }
   }
 
