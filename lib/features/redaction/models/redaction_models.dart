@@ -78,11 +78,14 @@ class TextDetectionResult {
     this.error,
   });
 
-  factory TextDetectionResult.fromRegions(List<RecognizedTextRegion> regions) =>
-      TextDetectionResult(
-        regions: List.unmodifiable(regions),
-        outcome: regions.isEmpty ? DetectionOutcome.empty : DetectionOutcome.success,
-      );
+  factory TextDetectionResult.fromRegions(
+    List<RecognizedTextRegion> regions,
+  ) => TextDetectionResult(
+    regions: List.unmodifiable(regions),
+    outcome: regions.isEmpty
+        ? DetectionOutcome.empty
+        : DetectionOutcome.success,
+  );
 
   factory TextDetectionResult.empty() =>
       const TextDetectionResult(outcome: DetectionOutcome.empty);
@@ -101,7 +104,6 @@ class TextDetectionResult {
   bool get isUnsupported => outcome == DetectionOutcome.unsupported;
   bool get isSuccess => outcome == DetectionOutcome.success;
 }
-
 
 class DetectionResult {
   DetectionResult({
