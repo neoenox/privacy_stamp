@@ -15,6 +15,7 @@ void main() {
   testWidgets('warns when OCR fails even if face detection succeeds', (
     tester,
   ) async {
+    final saver = _FakeSaver();
     final controller = StampController(
       picker: _FakePicker(),
       detector: DetectionServiceGateway(
@@ -24,7 +25,7 @@ void main() {
         ),
       ),
       exporter: (source, stamps) => Uint8List.fromList([1]),
-      saver: _FakeSaver(),
+      saver: saver,
       history: _FakeHistory(),
     );
     await tester.pumpWidget(
@@ -41,7 +42,38 @@ void main() {
       ),
       findsOneWidget,
     );
+    expect(find.byKey(const ValueKey('detection-warning-banner')), findsOneWidget);
+    expect(
+      find.text(
+        '文字認識（OCR）が完了していません。文字情報が未マスクの可能性があるため、画像全体を確認してください。',
+      ),
+      findsOneWidget,
+    );
     expect(find.byKey(const ValueKey('image-editor-canvas')), findsOneWidget);
+
+    await tester.ensureVisible(find.text('書き出す'));
+    await tester.tap(find.text('書き出す'));
+    await tester.pumpAndSettle();
+
+    expect(
+      find.text(
+        '文字認識（OCR）が完了していません。住所・電話番号・メールアドレスなどの文字情報が未マスクの可能性があります。画像全体を確認してください。',
+      ),
+      findsOneWidget,
+    );
+    expect(find.text('OCR未実施を確認して書き出す'), findsOneWidget);
+
+    await tester.tap(find.text('戻って確認する'));
+    await tester.pumpAndSettle();
+    expect(saver.saveCount, 0);
+
+    await tester.ensureVisible(find.text('書き出す'));
+    await tester.tap(find.text('書き出す'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('OCR未実施を確認して書き出す'));
+    await tester.pumpAndSettle();
+
+    expect(saver.saveCount, 1);
   });
 
   testWidgets('explains manual-only editing and exposes accessible controls', (
