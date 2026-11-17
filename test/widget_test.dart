@@ -51,6 +51,10 @@ void main() {
     );
     expect(find.byKey(const ValueKey('image-editor-canvas')), findsOneWidget);
 
+    // Let the transient failure SnackBar dismiss so it cannot cover the footer.
+    await tester.pump(const Duration(seconds: 5));
+    await tester.pumpAndSettle();
+
     await tester.ensureVisible(find.text('書き出す'));
     await tester.tap(find.text('書き出す'));
     await tester.pumpAndSettle();
