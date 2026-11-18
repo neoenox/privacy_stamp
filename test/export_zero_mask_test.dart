@@ -1,6 +1,6 @@
 import 'dart:typed_data';
 
-import 'package:material_ui/material_ui.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:privacy_stamp/features/redaction/models/redaction_models.dart';
 import 'package:privacy_stamp/features/redaction/presentation/stamp_controller.dart';
