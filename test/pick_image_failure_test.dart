@@ -227,7 +227,10 @@ void main() {
     await tester.tap(find.text('画像を選ぶ'));
     await tester.pumpAndSettle();
 
-    expect(find.text('画像の自動確認に失敗しました。画像は手動で編集できます。'), findsOneWidget);
+    expect(
+      find.text('一部または全部の自動検出に失敗しました。候補の有無にかかわらず、画像全体を手動で確認してください。'),
+      findsOneWidget,
+    );
     expect(find.text('手動スタンプを追加'), findsOneWidget);
   });
 }

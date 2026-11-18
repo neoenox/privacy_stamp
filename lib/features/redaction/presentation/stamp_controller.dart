@@ -374,13 +374,13 @@ class StampController extends ChangeNotifier {
         _detections = List.unmodifiable(regions);
         _pickFailure = null;
 
-        if (_detections.isEmpty) {
-          if (_lastDetectionSummary?.hasAnyException ?? false) {
-            _pickFailure = PickImageFailure.detectionFailed;
-            return PickImageResult.detectionFailed;
-          }
-          return PickImageResult.detectionEmpty;
+        if (_lastDetectionSummary?.hasAnyFailure ?? false) {
+          // Keep any successful candidates, but tell the user that at least
+          // one detector did not complete so manual review is especially important.
+          _pickFailure = PickImageFailure.detectionFailed;
+          return PickImageResult.detectionFailed;
         }
+        if (_detections.isEmpty) return PickImageResult.detectionEmpty;
         return PickImageResult.selected;
       } catch (_) {
         if (!_isCurrent(token)) return PickImageResult.stale;

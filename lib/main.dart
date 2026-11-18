@@ -75,7 +75,7 @@ class _StampHomePageState extends State<StampHomePage> {
       case PickImageResult.detectionEmpty:
         _notice('自動検出で領域が見つかりませんでした。手動でマスクしてください。');
       case PickImageResult.detectionFailed:
-        _notice('画像の自動確認に失敗しました。画像は手動で編集できます。');
+        _notice('一部または全部の自動検出に失敗しました。候補の有無にかかわらず、画像全体を手動で確認してください。');
     }
   }
 
@@ -85,14 +85,28 @@ class _StampHomePageState extends State<StampHomePage> {
       return;
     }
 
+    final summary = _controller.lastDetectionSummary;
+    final detectionWarning =
+        _controller.pickFailure == PickImageFailure.detectionFailed;
+    final ocrUnavailable =
+        summary?.hasTextException == true ||
+        summary?.hasTextUnsupported == true;
+    final reviewMessage = ocrUnavailable
+        ? '文字認識（OCR）が完了していません。住所・電話番号・メールアドレスなどの文字情報が未マスクの可能性があります。画像全体を確認してください。'
+        : detectionWarning
+        ? '一部の自動検出が完了していません。候補の有無にかかわらず、画像全体を確認してから書き出してください。'
+        : '顔・文字・バーコードの自動検出は目安です。隠し忘れがないか、画像全体を確認してから書き出してください。';
+    final confirmLabel = ocrUnavailable
+        ? 'OCR未実施を確認して書き出す'
+        : detectionWarning
+        ? '検出失敗を確認して書き出す'
+        : '確認して書き出す';
+
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('書き出す前に確認してください'),
-        content: const Text(
-          '顔・文字・バーコードの自動検出は目安です。隠し忘れがないか、'
-          '画像全体を確認してから書き出してください。',
-        ),
+        content: Text(reviewMessage),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(false),
@@ -100,7 +114,7 @@ class _StampHomePageState extends State<StampHomePage> {
           ),
           FilledButton(
             onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('確認して書き出す'),
+            child: Text(confirmLabel),
           ),
         ],
       ),
@@ -152,6 +166,11 @@ class _StampHomePageState extends State<StampHomePage> {
             busy: _controller.isBusy,
             canUndo: _controller.canUndoManualEdit,
             automaticCount: _controller.automaticCount,
+            detectionWarning:
+                _controller.pickFailure == PickImageFailure.detectionFailed,
+            ocrUnavailable:
+                _controller.lastDetectionSummary?.hasTextException == true ||
+                _controller.lastDetectionSummary?.hasTextUnsupported == true,
             onAdd: _controller.addManualStamp,
             onAddAt: _controller.addManualStampAt,
             onMove: _controller.moveManualStamp,
@@ -236,6 +255,8 @@ class _Editor extends StatefulWidget {
     required this.busy,
     required this.canUndo,
     required this.automaticCount,
+    required this.detectionWarning,
+    required this.ocrUnavailable,
     required this.onAdd,
     required this.onAddAt,
     required this.onMove,
@@ -254,6 +275,8 @@ class _Editor extends StatefulWidget {
   final bool busy;
   final bool canUndo;
   final int automaticCount;
+  final bool detectionWarning;
+  final bool ocrUnavailable;
   final VoidCallback onAdd;
   final ValueChanged<ui.Offset> onAddAt;
   final void Function(String id, ui.Offset delta) onMove;
@@ -338,6 +361,26 @@ class _EditorState extends State<_Editor> {
             '顔・文字・バーコードの候補は自動で追加されます（目安）。漏れがあるため、必ず目視で確認してください。',
             semanticsLabel: '顔・文字・バーコードの候補は自動で追加されます。必ず目視で確認してください。',
           ),
+          if (widget.detectionWarning)
+            Padding(
+              padding: const EdgeInsets.only(top: 8),
+              child: Card(
+                key: const ValueKey('detection-warning-banner'),
+                margin: EdgeInsets.zero,
+                color: Theme.of(context).colorScheme.errorContainer,
+                child: Padding(
+                  padding: const EdgeInsets.all(12),
+                  child: Text(
+                    widget.ocrUnavailable
+                        ? '文字認識（OCR）が完了していません。文字情報が未マスクの可能性があるため、画像全体を確認してください。'
+                        : '一部の自動検出が完了していません。候補の有無にかかわらず、画像全体を確認してください。',
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.onErrorContainer,
+                    ),
+                  ),
+                ),
+              ),
+            ),
           if (widget.automaticCount > 0)
             Padding(
               padding: const EdgeInsets.only(top: 8),

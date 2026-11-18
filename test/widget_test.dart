@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:privacy_stamp/features/redaction/detection/detector_service.dart';
 import 'package:privacy_stamp/features/redaction/models/redaction_models.dart';
 import 'package:privacy_stamp/features/redaction/presentation/stamp_controller.dart';
 import 'package:privacy_stamp/main.dart';
@@ -9,6 +10,74 @@ void main() {
     await tester.pumpWidget(const PrivacyStampApp());
     expect(find.text('画像を選ぶ'), findsOneWidget);
     expect(find.textContaining('端末・ブラウザー内'), findsOneWidget);
+  });
+
+  testWidgets('warns when OCR fails even if face detection succeeds', (
+    tester,
+  ) async {
+    final saver = _FakeSaver();
+    final controller = StampController(
+      picker: _FakePicker(),
+      detector: DetectionServiceGateway(
+        detector: DetectionService(
+          faceDetector: const _FaceWithRegion(),
+          textDetector: const _FailedTextDetector(),
+        ),
+      ),
+      exporter: (source, stamps) => Uint8List.fromList([1]),
+      saver: saver,
+      history: _FakeHistory(),
+    );
+    await tester.pumpWidget(
+      PrivacyStampApp(home: StampHomePage(controller: controller)),
+    );
+
+    await tester.tap(find.text('画像を選ぶ'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
+
+    expect(
+      find.text(
+        '一部または全部の自動検出に失敗しました。候補の有無にかかわらず、画像全体を手動で確認してください。',
+      ),
+      findsOneWidget,
+    );
+    expect(find.byKey(const ValueKey('detection-warning-banner')), findsOneWidget);
+    expect(
+      find.text(
+        '文字認識（OCR）が完了していません。文字情報が未マスクの可能性があるため、画像全体を確認してください。',
+      ),
+      findsOneWidget,
+    );
+    expect(find.byKey(const ValueKey('image-editor-canvas')), findsOneWidget);
+
+    // Let the transient failure SnackBar dismiss so it cannot cover the footer.
+    await tester.pump(const Duration(seconds: 5));
+    await tester.pumpAndSettle();
+
+    await tester.ensureVisible(find.text('書き出す'));
+    await tester.tap(find.text('書き出す'));
+    await tester.pumpAndSettle();
+
+    expect(
+      find.text(
+        '文字認識（OCR）が完了していません。住所・電話番号・メールアドレスなどの文字情報が未マスクの可能性があります。画像全体を確認してください。',
+      ),
+      findsOneWidget,
+    );
+    expect(find.text('OCR未実施を確認して書き出す'), findsOneWidget);
+
+    await tester.tap(find.text('戻って確認する'));
+    await tester.pumpAndSettle();
+    expect(saver.saveCount, 0);
+
+    await tester.ensureVisible(find.text('書き出す'));
+    await tester.tap(find.text('書き出す'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('OCR未実施を確認して書き出す'));
+    await tester.pumpAndSettle();
+
+    expect(saver.saveCount, 1);
   });
 
   testWidgets('explains manual-only editing and exposes accessible controls', (
@@ -169,4 +238,31 @@ class _FakeHistory implements ExportHistoryGateway {
 
   @override
   Future<void> recordExport() async {}
+}
+
+
+class _FaceWithRegion implements FaceRegionDetector {
+  const _FaceWithRegion();
+
+  @override
+  Future<DetectionResult> detect(Uint8ListImageInput input) async =>
+      DetectionResult(
+        regions: [
+          DetectionRegion(
+            id: 'face-0',
+            kind: DetectionKind.face,
+            normalizedRect: const NormalizedRect(.1, .1, .2, .2),
+          ),
+        ],
+        outcome: DetectionOutcome.success,
+        faceCount: 1,
+      );
+}
+
+class _FailedTextDetector implements TextRegionDetector {
+  const _FailedTextDetector();
+
+  @override
+  Future<TextDetectionResult> detect(Uint8ListImageInput input) async =>
+      TextDetectionResult.exception(error: 'OCR unavailable');
 }
