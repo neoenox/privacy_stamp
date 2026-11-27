@@ -231,9 +231,9 @@ void main() {
           saver: _Saver(),
           history: const _History(),
         );
-  
+
         final result = await controller.pickImage();
-  
+
         expect(result, PickImageResult.detectionFailed);
         expect(controller.automaticCount, 1);
         expect(controller.lastDetectionSummary!.hasTextException, isTrue);
