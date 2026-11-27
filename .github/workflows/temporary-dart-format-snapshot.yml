@@ -1,0 +1,33 @@
+name: Temporary Dart formatter snapshot
+on:
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  snapshot:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.47.9'
+          channel: stable
+      - name: Capture exact formatted source
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p .ci-logs
+          : > .ci-logs/formatted-snapshot.txt
+          for f in \
+            lib/features/redaction/detection/text_detector.dart \
+            lib/features/redaction/models/redaction_models.dart \
+            test/face_detection_test.dart \
+            test/text_detection_test.dart \
+            test/widget_test.dart; do
+            printf '\n===== %s =====\n' "$f" >> .ci-logs/formatted-snapshot.txt
+            dart format --output show "$f" >> .ci-logs/formatted-snapshot.txt
+          done
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dart-format-snapshot
+          path: .ci-logs/formatted-snapshot.txt
