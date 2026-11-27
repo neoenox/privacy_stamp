@@ -207,58 +207,59 @@ void main() {
     test(
       'reports partial failure when OCR fails but face detection succeeds',
       () async {
-      final controller = StampController(
-        picker: const _Picker(),
-        detector: DetectionServiceGateway(
-          detector: DetectionService(
-            faceDetector: _FakeFaceDetector(
-              DetectionResult(
-                regions: [
-                  DetectionRegion(
-                    id: 'face-0',
-                    kind: DetectionKind.face,
-                    normalizedRect: const NormalizedRect(.1, .1, .2, .2),
-                  ),
-                ],
-                outcome: DetectionOutcome.success,
-                faceCount: 1,
+        final controller = StampController(
+          picker: const _Picker(),
+          detector: DetectionServiceGateway(
+            detector: DetectionService(
+              faceDetector: _FakeFaceDetector(
+                DetectionResult(
+                  regions: [
+                    DetectionRegion(
+                      id: 'face-0',
+                      kind: DetectionKind.face,
+                      normalizedRect: const NormalizedRect(.1, .1, .2, .2),
+                    ),
+                  ],
+                  outcome: DetectionOutcome.success,
+                  faceCount: 1,
+                ),
               ),
+              textDetector: const _ThrowingTextDetector(),
             ),
-            textDetector: const _ThrowingTextDetector(),
           ),
-        ),
-        exporter: (source, stamps) => Uint8List.fromList(<int>[1]),
-        saver: _Saver(),
-        history: const _History(),
+          exporter: (source, stamps) => Uint8List.fromList(<int>[1]),
+          saver: _Saver(),
+          history: const _History(),
+        );
+  
+        final result = await controller.pickImage();
+  
+        expect(result, PickImageResult.detectionFailed);
+        expect(controller.automaticCount, 1);
+        expect(controller.lastDetectionSummary!.hasTextException, isTrue);
+        expect(controller.lastDetectionSummary!.hasAnyFailure, isTrue);
+        },
       );
-
-      final result = await controller.pickImage();
-
-      expect(result, PickImageResult.detectionFailed);
-      expect(controller.automaticCount, 1);
-      expect(controller.lastDetectionSummary!.hasTextException, isTrue);
-      expect(controller.lastDetectionSummary!.hasAnyFailure, isTrue);
-      },
-    );
-
-    test('detectionFailed when detector throws', () async {
-      final controller = StampController(
-        picker: const _Picker(),
-        detector: DetectionServiceGateway(
-          detector: DetectionService(
-            faceDetector: const _ThrowingFaceDetector(),
+  
+      test('detectionFailed when detector throws', () async {
+        final controller = StampController(
+          picker: const _Picker(),
+          detector: DetectionServiceGateway(
+            detector: DetectionService(
+              faceDetector: const _ThrowingFaceDetector(),
+            ),
           ),
-        ),
-        exporter: (source, stamps) => Uint8List.fromList(<int>[1]),
-        saver: _Saver(),
-        history: const _History(),
-      );
-      final result = await controller.pickImage();
-
-      expect(result, PickImageResult.detectionFailed);
-      expect(controller.detections, isEmpty);
-      expect(controller.lastDetectionSummary!.faces.isException, isTrue);
-    });
+          exporter: (source, stamps) => Uint8List.fromList(<int>[1]),
+          saver: _Saver(),
+          history: const _History(),
+        );
+        final result = await controller.pickImage();
+  
+        expect(result, PickImageResult.detectionFailed);
+        expect(controller.detections, isEmpty);
+        expect(controller.lastDetectionSummary!.faces.isException, isTrue);
+        },
+    );;
   });
 }
 
