@@ -26,9 +26,8 @@ class NoopTextDetector implements app.TextRegionDetector {
   const NoopTextDetector();
 
   @override
-  Future<app.TextDetectionResult> detect(
-    app.Uint8ListImageInput input,
-  ) async => app.TextDetectionResult.empty();
+  Future<app.TextDetectionResult> detect(app.Uint8ListImageInput input) async =>
+      app.TextDetectionResult.empty();
 }
 
 /// On-device OCR via Google ML Kit Text Recognition (Android/iOS).
@@ -50,9 +49,7 @@ class MlKitTextDetector implements app.TextRegionDetector {
   final int maxDetectionDimension;
 
   @override
-  Future<app.TextDetectionResult> detect(
-    app.Uint8ListImageInput input,
-  ) async {
+  Future<app.TextDetectionResult> detect(app.Uint8ListImageInput input) async {
     if (kIsWeb) return app.TextDetectionResult.unsupported();
     try {
       final prepared = await compute(
@@ -105,9 +102,7 @@ class MlKitTextDetector implements app.TextRegionDetector {
         await recognizer.close();
       }
     } catch (_) {
-      return app.TextDetectionResult.exception(
-        error: 'text detection failed',
-      );
+      return app.TextDetectionResult.exception(error: 'text detection failed');
     }
   }
 }
@@ -164,10 +159,10 @@ _PreparedImage? _prepareNv21ForText(
         );
         if (j.isEven && i.isEven) {
           final uvIndex = ySize + (j ~/ 2) * width + i;
-          nv21[uvIndex] =
-              (((112 * r - 94 * g - 18 * b + 128) >> 8) + 128).clamp(0, 255);
-          nv21[uvIndex + 1] =
-              (((-38 * r - 74 * g + 112 * b + 128) >> 8) + 128).clamp(0, 255);
+          nv21[uvIndex] = (((112 * r - 94 * g - 18 * b + 128) >> 8) + 128)
+              .clamp(0, 255);
+          nv21[uvIndex + 1] = (((-38 * r - 74 * g + 112 * b + 128) >> 8) + 128)
+              .clamp(0, 255);
         }
       }
     }
