@@ -239,27 +239,26 @@ void main() {
         expect(controller.lastDetectionSummary!.hasTextException, isTrue);
         expect(controller.lastDetectionSummary!.hasAnyFailure, isTrue);
         },
-      );
-  
-      test('detectionFailed when detector throws', () async {
-        final controller = StampController(
-          picker: const _Picker(),
-          detector: DetectionServiceGateway(
-            detector: DetectionService(
-              faceDetector: const _ThrowingFaceDetector(),
-            ),
+    );
+
+    test('detectionFailed when detector throws', () async {
+      final controller = StampController(
+        picker: const _Picker(),
+        detector: DetectionServiceGateway(
+          detector: DetectionService(
+            faceDetector: const _ThrowingFaceDetector(),
           ),
-          exporter: (source, stamps) => Uint8List.fromList(<int>[1]),
-          saver: _Saver(),
-          history: const _History(),
-        );
-        final result = await controller.pickImage();
-  
-        expect(result, PickImageResult.detectionFailed);
-        expect(controller.detections, isEmpty);
-        expect(controller.lastDetectionSummary!.faces.isException, isTrue);
-        },
-    );;
+        ),
+        exporter: (source, stamps) => Uint8List.fromList(<int>[1]),
+        saver: _Saver(),
+        history: const _History(),
+      );
+      final result = await controller.pickImage();
+
+      expect(result, PickImageResult.detectionFailed);
+      expect(controller.detections, isEmpty);
+      expect(controller.lastDetectionSummary!.faces.isException, isTrue);
+    });
   });
 }
 
