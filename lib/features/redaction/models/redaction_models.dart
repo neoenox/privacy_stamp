@@ -78,9 +78,8 @@ class TextDetectionResult {
     this.error,
   });
 
-  factory TextDetectionResult.fromRegions(
-    List<RecognizedTextRegion> regions,
-  ) => TextDetectionResult(
+  factory TextDetectionResult.fromRegions(List<RecognizedTextRegion> regions) =>
+      TextDetectionResult(
     regions: List.unmodifiable(regions),
     outcome: regions.isEmpty
         ? DetectionOutcome.empty
