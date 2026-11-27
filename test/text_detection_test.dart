@@ -56,7 +56,7 @@ void main() {
         expect(service.lastSummary!.hasAnyException, isTrue);
         expect(service.lastSummary!.text.error, 'text detection failed');
         },
-    );;
+    );
 
     test('genuine empty OCR result is not an exception', () async {
       final service = DetectionService(
@@ -80,7 +80,7 @@ void main() {
         );
         expect(result.regions, isEmpty);
         },
-    );;
+    );
 
     test('NoopTextDetector returns a genuine empty result', () async {
       final result = await const NoopTextDetector().detect(
