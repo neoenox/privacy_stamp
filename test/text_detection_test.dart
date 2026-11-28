@@ -45,17 +45,18 @@ void main() {
     test(
       'text detector exception remains distinguishable from empty OCR',
       () async {
-      final service = DetectionService(
-        textDetector: const _ThrowingTextDetector(),
-      );
-      final regions = await service.inspect(
-        Uint8ListImageInput(Uint8List.fromList([1, 2, 3])),
-      );
-      expect(regions, isEmpty);
-      expect(service.lastSummary!.text.isException, isTrue);
-      expect(service.lastSummary!.hasAnyException, isTrue);
-      expect(service.lastSummary!.text.error, 'text detection failed');
-    });
+        final service = DetectionService(
+          textDetector: const _ThrowingTextDetector(),
+        );
+        final regions = await service.inspect(
+          Uint8ListImageInput(Uint8List.fromList([1, 2, 3])),
+        );
+        expect(regions, isEmpty);
+        expect(service.lastSummary!.text.isException, isTrue);
+        expect(service.lastSummary!.hasAnyException, isTrue);
+        expect(service.lastSummary!.text.error, 'text detection failed');
+        },
+    );
 
     test('genuine empty OCR result is not an exception', () async {
       final service = DetectionService(
@@ -69,19 +70,17 @@ void main() {
     test(
       'MlKitTextDetector returns a diagnostic for invalid image input',
       () async {
-      final detector = MlKitTextDetector();
-      final result = await detector.detect(
-        Uint8ListImageInput(Uint8List.fromList([0, 1, 2, 3])),
-      );
-      expect(
-        result.outcome,
-        anyOf(
-          DetectionOutcome.exception,
-          DetectionOutcome.unsupported,
-        ),
-      );
-      expect(result.regions, isEmpty);
-    });
+        final detector = MlKitTextDetector();
+        final result = await detector.detect(
+          Uint8ListImageInput(Uint8List.fromList([0, 1, 2, 3])),
+        );
+        expect(
+          result.outcome,
+          anyOf(DetectionOutcome.exception, DetectionOutcome.unsupported),
+        );
+        expect(result.regions, isEmpty);
+        },
+    );
 
     test('NoopTextDetector returns a genuine empty result', () async {
       final result = await const NoopTextDetector().detect(

@@ -37,16 +37,12 @@ void main() {
     await tester.pump(const Duration(milliseconds: 400));
 
     expect(
-      find.text(
-        '一部または全部の自動検出に失敗しました。候補の有無にかかわらず、画像全体を手動で確認してください。',
-      ),
+      find.text('一部または全部の自動検出に失敗しました。候補の有無にかかわらず、画像全体を手動で確認してください。'),
       findsOneWidget,
     );
     expect(find.byKey(const ValueKey('detection-warning-banner')), findsOneWidget);
     expect(
-      find.text(
-        '文字認識（OCR）が完了していません。文字情報が未マスクの可能性があるため、画像全体を確認してください。',
-      ),
+      find.text('文字認識（OCR）が完了していません。文字情報が未マスクの可能性があるため、画像全体を確認してください。'),
       findsOneWidget,
     );
     expect(find.byKey(const ValueKey('image-editor-canvas')), findsOneWidget);
@@ -60,9 +56,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(
-      find.text(
-        '文字認識（OCR）が完了していません。住所・電話番号・メールアドレスなどの文字情報が未マスクの可能性があります。画像全体を確認してください。',
-      ),
+      find.text('文字認識（OCR）が完了していません。住所・電話番号・メールアドレスなどの文字情報が未マスクの可能性があります。画像全体を確認してください。'),
       findsOneWidget,
     );
     expect(find.text('OCR未実施を確認して書き出す'), findsOneWidget);
@@ -239,7 +233,6 @@ class _FakeHistory implements ExportHistoryGateway {
   @override
   Future<void> recordExport() async {}
 }
-
 
 class _FaceWithRegion implements FaceRegionDetector {
   const _FaceWithRegion();
