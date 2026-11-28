@@ -12,7 +12,6 @@ permissions:
 
 jobs:
   format:
-    if: github.repository == "neoenox/privacy_stamp" && github.ref == "refs/heads/fix/format-gate-issue60-20261128"
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
