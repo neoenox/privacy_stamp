@@ -1,8 +1,8 @@
 name: Temporary Dart formatter fix
 
 on:
-  pull_request:
-    branches: [main]
+  push:
+    branches: [fix/format-gate-issue60-20261128]
     paths:
       - ".github/workflows/format-auto-fix.yml"
       - "**/*.dart"
@@ -12,13 +12,13 @@ permissions:
 
 jobs:
   format:
-    if: github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.head.ref == "fix/format-gate-issue60-20261128"
+    if: github.repository == "neoenox/privacy_stamp" && github.ref == "refs/heads/fix/format-gate-issue60-20261128"
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.pull_request.head.ref }}
+          ref: ${{ github.ref_name }}
       - uses: subosito/flutter-action@v2
         with:
           flutter-version: "3.47.9"
@@ -37,4 +37,4 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add -u -- "*.dart"
           git commit -m "fix: apply Dart formatter to issue 60 files"
-          git push origin HEAD:${{ github.event.pull_request.head.ref }}
+          git push origin HEAD:${{ github.ref_name }}
